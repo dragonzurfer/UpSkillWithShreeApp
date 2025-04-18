@@ -1,103 +1,238 @@
+import LoginStatus from "@/components/LoginStatus";
 import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="flex min-h-screen flex-col bg-gradient-to-br from-gray-50 to-white text-gray-800">
+      {/* Header */}
+      <header className="w-full py-6 px-8 md:px-12 bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#00A02B] to-[#5DD62C] text-transparent bg-clip-text">
+            UpSkillWithShree
+          </h1>
+          <nav>
+            <ul className="flex space-x-8">
+              <li>
+                <a href="/diagnostic-tests" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                  Tests
+                </a>
+              </li>
+              <li>
+                <a href="/courses" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                  Courses
+                </a>
+              </li>
+              <li>
+                <a href="/community" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                  Community
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+      </header>
+
+      {/* Hero Section - Adjusted padding and spacing */}
+      <section className="w-full flex flex-col md:flex-row items-center justify-center py-12 md:py-16 px-8 md:px-12 gap-12">
+        <div className="max-w-3xl mx-auto md:mx-0 md:w-1/2 text-center md:text-left">
+          <h2 className="text-5xl md:text-6xl font-bold mb-6 pt-8 leading-tight">
+            Unlock Your Potential: <span className="text-green-600">Analyse</span>, Diagnose, and <span className="text-green-600">Upskill</span>
+          </h2>
+          <p className="text-lg md:text-xl mb-10 text-gray-600 max-w-2xl mx-auto md:mx-0">
+            Discover your strengths and weaknesses. Crack top tech interviews, build a personalized upskilling path, and get hired faster with our tailored learning roadmap.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 justify-center sm:justify-start">
+            <a
+              href="/diagnostic-tests"
+              className="inline-block bg-gradient-to-r from-green-600 to-green-800 text-white font-bold py-4 px-10 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition duration-300"
+            >
+              Explore Tests
+            </a>
+            <a
+              href="/sample"
+              className="inline-block bg-white text-green-700 font-semibold py-4 px-10 rounded-lg border-2 border-green-600 shadow-md hover:bg-green-50 hover:scale-105 transition duration-300"
+            >
+              Take a Sample Test
+            </a>
+          </div>
+        </div>
+        
+        {/* Right column with illustration and process icons - Refined background and spacing */}
+        <div className="md:w-1/2 flex flex-col items-center md:items-center">
+          <div className="relative w-full max-w-lg h-96 mb-16 hover:scale-105 transition duration-300 ease-in-out">
+            {/* Refined Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl opacity-60 blur-lg"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80" className="w-52 h-52 text-green-400 opacity-95">
+                <path d="M11.7 2.805a.75.75 0 01.6 0A60.65 60.65 0 0122.83 8.72a.75.75 0 01-.231 1.337 49.949 49.949 0 00-9.902 3.912l-.003.002-.34.18a.75.75 0 01-.707 0A50.009 50.009 0 007.5 12.174v-.224c0-.131.067-.248.172-.311a54.614 54.614 0 014.653-2.52.75.75 0 00-.65-1.352 56.129 56.129 0 00-4.78 2.589 1.858 1.858 0 00-.859 1.228 49.803 49.803 0 00-4.634-1.527.75.75 0 01-.231-1.337A60.653 60.653 0 0111.7 2.805z" />
+                <path d="M13.06 15.473a48.45 48.45 0 017.666-3.282c.134 1.414.22 2.843.255 4.285a.75.75 0 01-.46.71 47.878 47.878 0 00-8.105 4.342.75.75 0 01-.832 0 47.877 47.877 0 00-8.104-4.342.75.75 0 01-.461-.71c.035-1.442.121-2.87.255-4.286A48.4 48.4 0 016 13.18v1.27a1.5 1.5 0 00-.14 2.508c-.09.38-.222.753-.397 1.11.452.213.901.434 1.346.661a6.729 6.729 0 00.551-1.608 1.5 1.5 0 00.14-2.67v-.645a48.549 48.549 0 013.44 1.668 2.25 2.25 0 002.12 0z" />
+                <path d="M4.462 19.462c.42-.419.753-.89 1-1.394.453.213.902.434 1.347.661a6.743 6.743 0 01-1.286 1.794.75.75 0 11-1.06-1.06z" />
+              </svg>
+            </div>
+          </div>
+          
+          {/* Process Icons - Adjusted gap and responsiveness */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-lg">
+            <div className="bg-white p-6 rounded-lg shadow-md text-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <div className="w-14 h-14 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80" className="w-8 h-8">
+                  <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                  <path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-green-700 text-lg mb-1">Assess</h3>
+              <p className="text-sm text-gray-600">Take diagnostic tests</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md text-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <div className="w-14 h-14 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80" className="w-8 h-8">
+                  <path d="M11.7 2.805a.75.75 0 01.6 0A60.65 60.65 0 0122.83 8.72a.75.75 0 01-.231 1.337 49.949 49.949 0 00-9.902 3.912l-.003.002-.34.18a.75.75 0 01-.707 0A50.009 50.009 0 007.5 12.174v-.224c0-.131.067-.248.172-.311a54.614 54.614 0 014.653-2.52.75.75 0 00-.65-1.352 56.129 56.129 0 00-4.78 2.589 1.858 1.858 0 00-.859 1.228 49.803 49.803 0 00-4.634-1.527.75.75 0 01-.231-1.337A60.653 60.653 0 0111.7 2.805z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-green-700 text-lg mb-1">Learn</h3>
+              <p className="text-sm text-gray-600">Follow your roadmap</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md text-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <div className="w-14 h-14 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80" className="w-8 h-8">
+                  <path fillRule="evenodd" d="M12 1.5a.75.75 0 01.75.75V4.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5zM5.636 4.136a.75.75 0 011.06 0l1.592 1.591a.75.75 0 01-1.061 1.06l-1.591-1.59a.75.75 0 010-1.061zm12.728 0a.75.75 0 010 1.06l-1.591 1.592a.75.75 0 01-1.06-1.061l1.59-1.591a.75.75 0 011.061 0zm-6.816 4.496a.75.75 0 01.82.311l5.228 7.917a.75.75 0 01-.777 1.148l-2.097-.43 1.045 3.9a.75.75 0 01-1.45.388l-1.044-3.899-1.601 1.42a.75.75 0 01-1.247-.606l.569-9.47a.75.75 0 01.554-.68z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-green-700 text-lg mb-1">Grow</h3>
+              <p className="text-sm text-gray-600">Advance your career</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Assessments - Added top margin */}
+      <section className="w-full py-12 md:py-16 border-t border-gray-200 px-8 md:px-12">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-16">Featured Diagnostic Tests</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Test Box 1: Technical Proficiency */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path d="M11.7 2.805a.75.75 0 01.6 0A60.65 60.65 0 0122.83 8.72a.75.75 0 01-.231 1.337 49.949 49.949 0 00-9.902 3.912l-.003.002-.34.18a.75.75 0 01-.707 0A50.009 50.009 0 007.5 12.174v-.224c0-.131.067-.248.172-.311a54.614 54.614 0 014.653-2.52.75.75 0 00-.65-1.352 56.129 56.129 0 00-4.78 2.589 1.858 1.858 0 00-.859 1.228 49.803 49.803 0 00-4.634-1.527.75.75 0 01-.231-1.337A60.653 60.653 0 0111.7 2.805z" />
+                    <path d="M13.06 15.473a48.45 48.45 0 017.666-3.282c.134 1.414.22 2.843.255 4.285a.75.75 0 01-.46.71 47.878 47.878 0 00-8.105 4.342.75.75 0 01-.832 0 47.877 47.877 0 00-8.104-4.342.75.75 0 01-.461-.71c.035-1.442.121-2.87.255-4.286A48.4 48.4 0 016 13.18v1.27a1.5 1.5 0 00-.14 2.508c-.09.38-.222.753-.397 1.11.452.213.901.434 1.346.661a6.729 6.729 0 00.551-1.608 1.5 1.5 0 00.14-2.67v-.645a48.549 48.549 0 013.44 1.668 2.25 2.25 0 002.12 0z" />
+                    <path d="M4.462 19.462c.42-.419.753-.89 1-1.394.453.213.902.434 1.347.661a6.743 6.743 0 01-1.286 1.794.75.75 0 11-1.06-1.06z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Technical Proficiency</h3>
+                <p className="text-gray-600 text-center mb-8">Evaluate your technical skills through in-depth, hands-on assessments.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+
+            {/* Test Box 2: Soft Skills Analysis */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Soft Skills Analysis</h3>
+                <p className="text-gray-600 text-center mb-8">Measure communication, leadership, and teamwork abilities to boost professional growth.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+
+            {/* Test Box 3: Problem-Solving */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path fillRule="evenodd" d="M12 1.5a.75.75 0 01.75.75V4.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5zM5.636 4.136a.75.75 0 011.06 0l1.592 1.591a.75.75 0 01-1.061 1.06l-1.591-1.59a.75.75 0 010-1.061zm12.728 0a.75.75 0 010 1.06l-1.591 1.592a.75.75 0 01-1.06-1.061l1.59-1.591a.75.75 0 011.061 0zm-6.816 4.496a.75.75 0 01.82.311l5.228 7.917a.75.75 0 01-.777 1.148l-2.097-.43 1.045 3.9a.75.75 0 01-1.45.388l-1.044-3.899-1.601 1.42a.75.75 0 01-1.247-.606l.569-9.47a.75.75 0 01.554-.68z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Problem-Solving</h3>
+                <p className="text-gray-600 text-center mb-8">Test your analytical thinking and develop solutions to real-world challenges.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Specialized Assessments - Added top margin and adjusted background */}
+      <section className="w-full py-12 md:py-16 bg-gradient-to-b from-gray-50 to-gray-100 px-8 md:px-12">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-16">Specialized Assessments</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Assessment Box 1: Cognitive Abilities */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path d="M16.5 7.5h-9v9h9v-9z" />
+                    <path fillRule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75h-2.25V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A1.5 1.5 0 004.5 8.25v7.5A1.5 1.5 0 006 17.25h12a1.5 1.5 0 001.5-1.5v-7.5A1.5 1.5 0 0018 6.75H6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Cognitive Abilities</h3>
+                <p className="text-gray-600 text-center mb-8">Evaluate memory, attention to detail, and logical reasoning skills.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+
+            {/* Assessment Box 2: Career Aptitude */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path d="M11.7 2.805a.75.75 0 01.6 0A60.65 60.65 0 0122.83 8.72a.75.75 0 01-.231 1.337 49.949 49.949 0 00-9.902 3.912l-.003.002-.34.18a.75.75 0 01-.707 0A50.009 50.009 0 007.5 12.174v-.224c0-.131.067-.248.172-.311a54.614 54.614 0 014.653-2.52.75.75 0 00-.65-1.352 56.129 56.129 0 00-4.78 2.589 1.858 1.858 0 00-.859 1.228 49.803 49.803 0 00-4.634-1.527.75.75 0 01-.231-1.337A60.653 60.653 0 0111.7 2.805z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Career Aptitude</h3>
+                <p className="text-gray-600 text-center mb-8">Discover which career paths align with your natural talents and interests.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+
+            {/* Assessment Box 3: Performance Metrics */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <div className="w-16 h-16 mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#5DD62C" className="w-full h-full">
+                    <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-center mb-3">Performance Metrics</h3>
+                <p className="text-gray-600 text-center mb-8">Assess productivity, efficiency, and work quality with data-driven insights.</p>
+                <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                  Evaluate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Login / Status Section - Added top margin */}
+      <section className="w-full py-12 md:py-16 border-t border-gray-200 px-8 md:px-12">
+        <div className="max-w-6xl mx-auto text-center">
+          <LoginStatus />
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full py-8 bg-white border-t border-gray-200">
+        <div className="max-w-6xl mx-auto text-center text-gray-600">
+          © {new Date().getFullYear()} UpSkillWithShree. All rights reserved.
+        </div>
       </footer>
-    </div>
+    </main>
   );
 }

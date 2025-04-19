@@ -12,6 +12,11 @@ import NextAuthProvider from "@/components/NextAuthProvider";
 export const metadata: Metadata = {
   title: "UpSkillWithShree", // Changed title
   description: "Unlock Your Potential: Analyse, Diagnose, and Upskill", // Changed description
+  icons: {
+    icon: [
+      { url: '/graduation-hat.svg' }
+    ],
+  }
 };
 
 export default function RootLayout({
@@ -21,6 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/graduation-hat.svg" type="image/svg+xml" />
+      </head>
       {/* Remove font variables from className */}
       <body className="antialiased"> 
         <NextAuthProvider>

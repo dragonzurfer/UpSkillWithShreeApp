@@ -22,7 +22,7 @@ export default function Home() {
               </li>
               <li>
                 <Link href="/products" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
-                  Products
+                  1:1 One on One
                 </Link>
               </li>
               <li className="relative group">
@@ -301,7 +301,7 @@ export default function Home() {
               <Link href="/terms" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Terms & Conditions</Link>
               <Link href="/refunds" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Refunds & Cancellations</Link>
               <Link href="/contact" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Contact Us</Link>
-              <Link href="/products" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Products & Services</Link>
+              <Link href="/products" className="text-gray-600 hover:text-green-600 transition-colors duration-200">1:1 One on One</Link>
             </div>
           </div>
         </div>

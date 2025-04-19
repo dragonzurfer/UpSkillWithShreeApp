@@ -21,7 +21,7 @@ export default function Products() {
               </li>
               <li>
                 <Link href="/products" className="text-gray-700 hover:text-green-600 transition-colors duration-200 font-semibold">
-                  Products
+                  1:1 One on One
                 </Link>
               </li>
               <li>
@@ -35,15 +35,15 @@ export default function Products() {
       </header>
 
       <div className="max-w-6xl mx-auto my-12 px-8 md:px-0 w-full">
-        <h1 className="text-4xl font-bold mb-4 text-center">Our Products & Services</h1>
+        <h1 className="text-4xl font-bold mb-4 text-center">1:1 One on One Sessions</h1>
         <p className="text-xl text-gray-600 text-center mb-16 max-w-3xl mx-auto">
-          Unlock your potential with our comprehensive diagnostic tests and personalized learning plans.
+          Personalized coaching to accelerate your learning and career growth. Our expert mentors provide tailored guidance for your specific needs.
           All prices are listed in Indian Rupees (INR).
         </p>
         
         {/* Diagnostic Tests Section */}
         <section className="mb-20">
-          <h2 className="text-3xl font-bold mb-10 text-center">Diagnostic Tests</h2>
+          <h2 className="text-3xl font-bold mb-10 text-center">Personalized Assessment & Coaching</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Basic Diagnostic Test */}

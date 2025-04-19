@@ -21,7 +21,7 @@ export default function ContactUs() {
               </li>
               <li>
                 <Link href="/products" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
-                  Products
+                  1:1 One on One
                 </Link>
               </li>
             </ul>

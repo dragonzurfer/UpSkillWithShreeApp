@@ -11,6 +11,64 @@ if (!process.env.GOOGLE_CLIENT_SECRET) {
   throw new Error("Missing GOOGLE_CLIENT_SECRET environment variable");
 }
 
+// Define the max age in seconds (30 days)
+const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Helper function to refresh an expired access token using the refresh token
+ */
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  try {
+    // Use Google's token endpoint directly
+    const url = "https://oauth2.googleapis.com/token";
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        grant_type: "refresh_token",
+        refresh_token: token.refreshToken as string,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      console.error("Error refreshing access token", refreshedTokens);
+      // Return the token we have - it might still work, or session will be invalidated
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+      };
+    }
+
+    console.log("Successfully refreshed access token");
+
+    // Calculate new expiry time - default to 1 hour (3600 seconds) if not provided
+    const expiresIn = refreshedTokens.expires_in ?? 3600;
+    const accessTokenExpires = Date.now() + expiresIn * 1000;
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      idToken: refreshedTokens.id_token ?? token.idToken, // Keep previous if not provided
+      accessTokenExpires,
+      // Don't update refresh token - Google sends a new one only if necessary
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      error: undefined, // Clear any previous errors
+    };
+  } catch (error) {
+    console.error("Error refreshing access token:", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -31,20 +89,48 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt", // Use JWT strategy to handle tokens
+    maxAge: THIRTY_DAYS_IN_SECONDS, // Set session max age to 30 days
+  },
+  jwt: {
+    maxAge: THIRTY_DAYS_IN_SECONDS, // Set JWT max age to 30 days
   },
   callbacks: {
-    // Include Google ID token in the JWT
+    // Handle JWT operations including token refresh
     async jwt({ token, account }: { token: JWT; account: Account | null }): Promise<JWT> {
-      // Persist the id_token to the token right after sign in
+      // Initial sign-in: save all relevant token info
       if (account) {
-        token.idToken = account.id_token; // Add id_token
+        return {
+          ...token,
+          accessToken: account.access_token,
+          idToken: account.id_token,
+          refreshToken: account.refresh_token,
+          accessTokenExpires: account.expires_at 
+            ? account.expires_at * 1000 // convert to milliseconds
+            : Date.now() + 3600 * 1000, // default 1 hour
+          providerAccountId: account.providerAccountId,
+        };
       }
-      return token;
+
+      // Return previous token if the access token has not expired yet
+      if (token.accessTokenExpires && typeof token.accessTokenExpires === 'number' && Date.now() < token.accessTokenExpires) {
+        return token;
+      }
+
+      // Access token has expired, try to refresh it
+      return refreshAccessToken(token);
     },
-    // Make ID token available in the client-side session object (use with caution)
+    
+    // Make token information available in the client-side session
     async session({ session, token }: { session: any; token: JWT }): Promise<any> {
-       // Send properties to the client, like an access_token and user id from a provider.
-      session.idToken = token.idToken; // Add id_token to session
+      // Send properties to the client
+      session.accessToken = token.accessToken;
+      session.idToken = token.idToken;
+      session.error = token.error;
+      
+      if (token.providerAccountId) {
+        session.user.id = token.providerAccountId;
+      }
+
       return session;
     },
   },

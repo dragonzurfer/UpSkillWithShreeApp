@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { load, Cashfree } from "@cashfreepayments/cashfree-js"; // Import load and Cashfree type
 
 // Define the interfaces based on the backend models
 interface Question {
@@ -28,6 +29,22 @@ interface QuestionResponse {
   Answer: string;
 }
 
+// Interface for 402 Payment Required Error Response
+interface PaymentRequiredError {
+  error: string;
+  productId: number;
+  productName: string;
+  cost: number;
+  currency: string;
+}
+
+// Interface for Payment Session Response (expecting session ID now)
+interface PaymentSessionResponse {
+  paymentSessionId: string;
+  order_id: string; // Assuming order_id might still be returned
+  // payment_link is no longer needed here
+}
+
 export default function StartTestPage() {
   const params = useParams();
   const testId = params.testId as string;
@@ -44,6 +61,16 @@ export default function StartTestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // State for payment flow
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [paymentProductId, setPaymentProductId] = useState<number | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentRequiredError | null>(null);
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+  const [paymentInitiationError, setPaymentInitiationError] = useState<string | null>(null);
+
+  // Ref or State to hold the initialized Cashfree instance
+  const [cashfree, setCashfree] = useState<Cashfree | null>(null);
 
   // Helper function to get auth headers
   const getAuthHeaders = useCallback((includeContentType = true): Record<string, string> | null => {
@@ -64,10 +91,14 @@ export default function StartTestPage() {
     const fetchQuestionPaper = async () => {
       setLoading(true);
       setError(null);
+      setPaymentRequired(false); // Reset payment state on each fetch
+      setPaymentProductId(null);
+      setPaymentDetails(null);
       try {
         const headers = getAuthHeaders(false);
         if (!headers) {
           setError("Authentication required to take this test.");
+          setLoading(false);
           return;
         }
 
@@ -75,6 +106,17 @@ export default function StartTestPage() {
           headers,
           cache: 'no-store'
         });
+
+        // Handle Payment Required specifically
+        if (response.status === 402) {
+          const paymentInfo: PaymentRequiredError = await response.json();
+          setPaymentRequired(true);
+          setPaymentProductId(paymentInfo.productId);
+          setPaymentDetails(paymentInfo);
+          setError(`Payment required for this test: ${paymentInfo.productName} (${paymentInfo.cost} ${paymentInfo.currency})`);
+          setLoading(false);
+          return; // Stop processing, wait for user to initiate payment
+        }
 
         if (!response.ok) {
           throw new Error(`Failed to fetch test: ${response.statusText}`);
@@ -86,6 +128,7 @@ export default function StartTestPage() {
         setQuestionPaper(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred while fetching the test');
+        setPaymentRequired(false); // Ensure payment state is false if another error occurs
       } finally {
         setLoading(false);
       }
@@ -93,6 +136,22 @@ export default function StartTestPage() {
 
     fetchQuestionPaper();
   }, [BACKEND_URL, getAuthHeaders, testId, status]);
+
+  // Initialize Cashfree SDK
+  useEffect(() => {
+    const initializeSDK = async () => {
+      try {
+        const cfInstance = await load({
+          mode: process.env.NEXT_PUBLIC_CASHFREE_MODE === 'production' ? "production" : "sandbox" // Use env var for mode
+        });
+        setCashfree(cfInstance);
+      } catch (error) {
+        console.error("Error initializing Cashfree SDK:", error);
+        setPaymentInitiationError("Could not initialize payment gateway. Please try again later.");
+      }
+    };
+    initializeSDK();
+  }, []);
 
   // Handle answer changes
   const handleAnswerChange = (questionId: number, answer: string) => {
@@ -291,6 +350,87 @@ export default function StartTestPage() {
     return (responses.size / questionPaper.Questions.length) * 100;
   };
 
+  // Initiate payment process using Cashfree SDK
+  const handleInitiatePayment = async () => {
+    if (!paymentProductId || !BACKEND_URL || !cashfree) {
+      setPaymentInitiationError(
+        !cashfree 
+        ? "Payment gateway is not initialized. Please wait or refresh." 
+        : "Missing payment details or configuration."
+      );
+      return;
+    }
+    
+    setInitiatingPayment(true);
+    setPaymentInitiationError(null);
+    
+    try {
+      // Get headers including Content-Type for the POST request
+      const headers = getAuthHeaders(true); // Ensure Content-Type is included
+      if (!headers) {
+        setPaymentInitiationError("Authentication required to initiate payment.");
+        setInitiatingPayment(false);
+        return;
+      }
+      
+      // Get the current URL
+      const redirectUrl = window.location.href;
+
+      // 1. Fetch the paymentSessionId from your backend, sending redirectUrl
+      console.log("Fetching payment session ID from:", `${BACKEND_URL}/v1/api/payment/session/product/${paymentProductId}`);
+      const response = await fetch(`${BACKEND_URL}/v1/api/payment/session/product/${paymentProductId}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ redirectUrl: redirectUrl }) // Send current URL in body
+      });
+      
+      console.log("Received response status:", response.status);
+
+      if (!response.ok) {
+        let errorBody = "Failed to read error response body";
+        try {
+          errorBody = await response.text(); // Try reading as text first
+          console.error("Error response body:", errorBody);
+          const errorData = JSON.parse(errorBody); // Then try parsing as JSON
+          throw new Error(errorData.message || `Failed to get payment session: ${response.statusText}`);
+        } catch (parseError) {
+          console.error("Could not parse error response as JSON:", parseError);
+          // Use the raw text or a generic message if JSON parsing failed
+          throw new Error(errorBody.substring(0, 100) || `Failed to get payment session: ${response.statusText}`); 
+        }
+      }
+      
+      console.log("Attempting to parse response JSON...");
+      const paymentSession: PaymentSessionResponse = await response.json();
+      
+      // Log the actual response from the backend for debugging
+      console.log("Successfully parsed payment session data:", paymentSession);
+      
+      if (!paymentSession.paymentSessionId) {
+        console.error("paymentSessionId key not found in response:", paymentSession);
+        throw new Error("Payment session ID key not found in the response object.");
+      }
+      
+      // 2. Use the session ID to trigger Cashfree checkout
+      console.log("Initializing Cashfree checkout with session ID:", paymentSession.paymentSessionId);
+      const checkoutOptions = {
+        paymentSessionId: paymentSession.paymentSessionId,
+      };
+      
+      cashfree.checkout(checkoutOptions); 
+      console.log("Cashfree checkout initiated."); // Log after calling checkout
+      // Cashfree SDK handles the redirection internally
+      
+      // Setting state back might happen after redirect, depending on timing
+      // setInitiatingPayment(false); 
+      
+    } catch (err) {
+      console.error("Payment Initiation Error [Caught]:", err);
+      setPaymentInitiationError(err instanceof Error ? err.message : 'An error occurred during payment initiation.');
+      setInitiatingPayment(false);
+    }
+  };
+
   // Show loading state
   if (loading) {
     return (
@@ -307,16 +447,37 @@ export default function StartTestPage() {
   if (error) {
     return (
       <div className="container mx-auto p-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-4">
-          <h2 className="font-semibold text-lg mb-2">Error</h2>
+        <div className={`border rounded-lg p-4 mb-4 ${paymentRequired ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <h2 className="font-semibold text-lg mb-2">{paymentRequired ? 'Payment Required' : 'Error'}</h2>
           <p>{error}</p>
+          {paymentRequired && paymentDetails && (
+            <div className="mt-4">
+              <p><strong>Product:</strong> {paymentDetails.productName}</p>
+              <p><strong>Cost:</strong> {paymentDetails.cost} {paymentDetails.currency}</p>
+              
+              {paymentInitiationError && (
+                <p className="text-red-600 mt-2 font-medium">Payment Error: {paymentInitiationError}</p>
+              )}
+              
+              <button 
+                onClick={handleInitiatePayment}
+                disabled={initiatingPayment || !cashfree} // Disable if SDK not loaded
+                className={`mt-4 px-4 py-2 rounded-md text-white ${initiatingPayment || !cashfree ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                title={!cashfree ? "Payment gateway loading..." : undefined}
+              >
+                {initiatingPayment ? 'Processing Payment...' : 'Proceed to Payment'}
+              </button>
+            </div>
+          )}
         </div>
-        <button 
-          onClick={() => router.back()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          Go Back
-        </button>
+        {!paymentRequired && (
+          <button 
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Go Back
+          </button>
+        )}
       </div>
     );
   }

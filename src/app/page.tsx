@@ -1,5 +1,6 @@
 import LoginStatus from "@/components/LoginStatus";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -7,15 +8,22 @@ export default function Home() {
       {/* Header */}
       <header className="w-full py-6 px-8 md:px-12 bg-white shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#00A02B] to-[#5DD62C] text-transparent bg-clip-text">
-            UpSkillWithShree
-          </h1>
+          <Link href="/">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-[#00A02B] to-[#5DD62C] text-transparent bg-clip-text">
+              UpSkillWithShree
+            </h1>
+          </Link>
           <nav>
             <ul className="flex space-x-8">
               <li>
-                <a href="/diagnostic-tests" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                <Link href="/diagnostic-tests" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
                   Tests
-                </a>
+                </Link>
+              </li>
+              <li>
+                <Link href="/products" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                  Products
+                </Link>
               </li>
               <li className="relative group">
                 {/* Community dropdown trigger */}
@@ -76,6 +84,11 @@ export default function Home() {
                     </div>
                   </a>
                 </div>
+              </li>
+              <li>
+                <Link href="/contact" className="text-gray-700 hover:text-green-600 transition-colors duration-200">
+                  Contact
+                </Link>
               </li>
             </ul>
           </nav>
@@ -279,8 +292,18 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="w-full py-8 bg-white border-t border-gray-200">
-        <div className="max-w-6xl mx-auto text-center text-gray-600">
-          © {new Date().getFullYear()} UpSkillWithShree. All rights reserved.
+        <div className="max-w-6xl mx-auto px-8 md:px-0">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <p className="text-gray-600">© {new Date().getFullYear()} UpSkillWithShree. All rights reserved.</p>
+            </div>
+            <div className="flex flex-wrap gap-4 md:gap-6 justify-center">
+              <Link href="/terms" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Terms & Conditions</Link>
+              <Link href="/refunds" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Refunds & Cancellations</Link>
+              <Link href="/contact" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Contact Us</Link>
+              <Link href="/products" className="text-gray-600 hover:text-green-600 transition-colors duration-200">Products & Services</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </main>

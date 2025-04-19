@@ -10,8 +10,8 @@ import NextAuthProvider from "@/components/NextAuthProvider";
 
 // Update or simplify metadata
 export const metadata: Metadata = {
-  title: "Shree App", // Changed title
-  description: "Diagnostic Testing Application", // Changed description
+  title: "UpSkillWithShree", // Changed title
+  description: "Unlock Your Potential: Analyse, Diagnose, and Upskill", // Changed description
 };
 
 export default function RootLayout({

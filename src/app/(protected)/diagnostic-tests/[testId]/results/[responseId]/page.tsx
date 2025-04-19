@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 // Define interfaces based on backend models
-interface Tag { // <-- Add Tag interface
+interface Tag {
   ID: number;
   CreatedAt: string;
   UpdatedAt: string;
@@ -13,50 +13,95 @@ interface Tag { // <-- Add Tag interface
   Name: string;
 }
 
+interface Material {
+  ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
+  URL: string;
+  MetaTags: string;
+  Description: string;
+  Tags: Tag[] | null;
+  Questions: any[] | null;
+}
+
 interface Question {
   ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
   Description: string;
   CorrectAnswer: string;
   AnswerChoices: string | string[] | null;
   Hint: string;
   Explanation: string;
-  Tags: Tag[]; // <-- Add Tags property
-  // Type might be useful too, but not strictly needed for this request
+  Tags: Tag[];
   Type: string;
-  Materials: any; // Assuming Materials could be anything or null
+  Materials: Material[] | null;
 }
 
 interface QuestionResponse {
   ID: number;
-  ResponseID: number; // Renamed from responseId for consistency
-  QuestionID: number; // Renamed from questionId for consistency
-  answer: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
+  responseId: number;
+  Response: any; // Contains circular reference
+  questionId: number;
   Question: Question;
+  answer: string;
+}
+
+interface User {
+  ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
+  GoogleUserID: string;
+  Email: string;
+  Name: string;
+  Picture: string;
+  IsAdmin: boolean;
+  Orders: any[] | null;
+}
+
+interface QuestionPaper {
+  ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
+  Title: string;
+  Description: string;
+  Metadata: Record<string, any> | null;
+  Questions: Question[] | null;
+}
+
+interface TopicScore {
+  [key: string]: string; // e.g. "arrays": "1/1"
+}
+
+interface DifficultyScore {
+  [key: string]: string; // e.g. "medium": "1/1"
 }
 
 interface Response {
   ID: number;
-  UserID: number; // Renamed from userId for consistency
-  QuestionPaperID: number; // Renamed from questionPaperId for consistency
-  QuestionPaper: {
-    ID: number;
-    Title: string;
-    Description: string;
-    Metadata: Record<string, any> | null; // Allow null
-  };
-  Answers: QuestionResponse[];
   CreatedAt: string;
-  // Include User if needed, based on the initial JSON sample
-  User: {
-    ID: number;
-    Name: string;
-    // Add other user fields if available/needed
-  };
-  // Add other fields from the initial JSON sample if needed
   UpdatedAt: string;
   DeletedAt: string | null;
+  userId: number;
+  User: User;
+  questionPaperId: number;
+  QuestionPaper: QuestionPaper;
+  Answers: QuestionResponse[];
+  totalCorrectAnswers: number;
+  totalIncorrectAnswers: number;
+  weightedScore: number;
+  topicWiseScore: TopicScore[];
+  difficultyWiseScore: DifficultyScore[];
+  preparationAdvice: string;
+  resources: any[];
 }
-
 
 export default function ResultsPage() {
   const params = useParams();
@@ -105,20 +150,18 @@ export default function ResultsPage() {
       setError(null);
       try {
         const headers = getAuthHeaders(false);
-        // This check is technically redundant now due to the status check above, but good practice
         if (!headers) {
           setError("Authentication failed or session expired.");
-          setLoading(false); // Ensure loading stops
+          setLoading(false);
           return;
         }
 
         const res = await fetch(`${BACKEND_URL}/v1/api/responses/${responseId}`, {
           headers,
-          cache: 'no-store' // Ensure fresh data
+          cache: 'no-store'
         });
 
         if (!res.ok) {
-          // Provide more specific error messages if possible
           if (res.status === 401 || res.status === 403) {
             throw new Error(`Authorization failed: ${res.statusText}`);
           }
@@ -128,9 +171,8 @@ export default function ResultsPage() {
           throw new Error(`Failed to fetch response: ${res.status} ${res.statusText}`);
         }
 
-        const data: Response = await res.json(); // Assert the type
+        const data: Response = await res.json();
 
-        // Validate the structure slightly (optional but helpful)
         if (!data || !data.Answers || !data.QuestionPaper) {
             throw new Error("Received invalid data format from server.");
         }
@@ -138,21 +180,29 @@ export default function ResultsPage() {
         setResponse(data);
 
         // Calculate score
-        if (data.Answers && data.Answers.length > 0) {
+        if (data.totalCorrectAnswers !== undefined && data.totalIncorrectAnswers !== undefined) {
+          const total = data.totalCorrectAnswers + data.totalIncorrectAnswers;
+          const correct = data.totalCorrectAnswers;
+          // Calculate actual accuracy percentage separately
+          const accuracyPercentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+            
+          // Set score state with correct accuracy percentage
+          setScore({ correct, total, percentage: accuracyPercentage }); 
+        } else if (data.Answers && data.Answers.length > 0) {
+          // Fallback calculation
           const total = data.Answers.length;
-          // Ensure Question and CorrectAnswer exist before comparing
           const correct = data.Answers.filter(
             (ans: QuestionResponse) =>
-              ans.Question && ans.Question.CorrectAnswer && // Add null checks
+              ans.Question && ans.Question.CorrectAnswer &&
               ans.answer?.trim().toLowerCase() === ans.Question.CorrectAnswer.trim().toLowerCase()
           ).length;
-          const percentage = total > 0 ? Math.round((correct / total) * 100) : 0; // Avoid division by zero
+          const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
           setScore({ correct, total, percentage });
         } else {
-          setScore({ correct: 0, total: 0, percentage: 0 }); // Handle case with no answers
+          setScore({ correct: 0, total: 0, percentage: 0 });
         }
       } catch (err) {
-        console.error("Error fetching results:", err); // Log the actual error
+        console.error("Error fetching results:", err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred while fetching the results');
       } finally {
         setLoading(false);
@@ -214,6 +264,60 @@ export default function ResultsPage() {
     return [];
   };
 
+  // Helper function to render SVG gauge
+  const renderGauge = (percentage: number, label: string, value: string | number, colorClass: string, baseColorClass: string = 'text-gray-200') => {
+    // Ensure percentage is between 0-100
+    const normalizedPercentage = Math.min(Math.max(percentage, 0), 100);
+    
+    const radius = 50;
+    const circumference = 2 * Math.PI * radius * 0.75; // 270 degree arc
+    const offset = circumference - (normalizedPercentage / 100) * circumference;
+    const rotation = -135; // Start angle
+
+    return (
+      <div className="text-center">
+        <div className="relative h-32 w-32">
+          <svg className="w-full h-full" viewBox="0 0 120 120">
+            {/* Base arc */}
+            <circle
+              className={baseColorClass}
+              strokeWidth="10"
+              stroke="currentColor"
+              fill="transparent"
+              r={radius}
+              cx="60"
+              cy="60"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset="0"
+              transform={`rotate(${rotation} 60 60)`}
+            />
+            {/* Value arc */}
+            <circle
+              className={colorClass}
+              strokeWidth="10"
+              stroke="currentColor"
+              fill="transparent"
+              r={radius}
+              cx="60"
+              cy="60"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={offset}
+              transform={`rotate(${rotation} 60 60)`}
+              style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
+              strokeLinecap="round"
+            />
+            {/* Center text */}
+            <text x="60" y="60" textAnchor="middle" dy=".3em" className="text-3xl font-bold fill-current text-gray-700">
+              {value}
+            </text>
+            <text x="60" y="80" textAnchor="middle" className="text-sm fill-current text-gray-500">
+              {label}
+            </text>
+          </svg>
+        </div>
+      </div>
+    );
+  };
 
   // Display loading state
   if (loading) {
@@ -279,228 +383,213 @@ export default function ResultsPage() {
 
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl"> {/* Constrain width for readability */}
+    <div className="container mx-auto p-4 max-w-5xl">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{response.QuestionPaper.Title} - Results</h1>
-        <p className="text-gray-600">
-          Completed on {formatDate(response.CreatedAt)}
-        </p>
-        {/* Display user info if available */}
-        {response.User && response.User.Name && (
-            <p className="text-gray-600 text-sm mt-1">Taken by: {response.User.Name}</p>
-        )}
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-bold mb-6">DSA Test Results</h1>
       </div>
 
-      {/* Score Summary */}
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">Score Summary</h2>
+      {/* Main results summary */}
+      <div className="bg-white shadow-md rounded-lg p-8 mb-8">
+        <div className="flex flex-wrap justify-around items-center gap-8">
+          {/* Accuracy */}
+          {renderGauge(score.percentage, 'Accuracy', `${score.percentage}%`, 'text-blue-500', 'text-blue-100')}
 
-        <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-6">
-          <div className="text-center">
-            <div className="text-5xl font-bold text-indigo-600">{score.percentage}%</div>
-            <div className="text-sm text-gray-500 mt-1">Overall Score</div>
-          </div>
+          {/* Weighted Score - ensure we're passing a percentage value */}
+          {renderGauge(
+            Math.min(response.weightedScore, 100), // Ensure it's treated as a percentage (0-100)
+            'Weighted S', 
+            response.weightedScore, 
+            'text-gray-700', 
+            'text-gray-200'
+          )}
 
-          <div className="flex space-x-6 sm:space-x-8">
+          {/* Ready for Interview */}
+          {response.weightedScore >= 85 && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{score.correct}</div>
-              <div className="text-sm text-gray-500">Correct</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{score.total - score.correct}</div>
-              <div className="text-sm text-gray-500">Incorrect</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-2xl font-bold">{score.total}</div>
-              <div className="text-sm text-gray-500">Total Questions</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Passing indicator */}
-        {response.QuestionPaper.Metadata?.passingScore != null && ( // Check for non-null/undefined
-          <div className="mt-6 pt-4 border-t">
-            <div className={`flex items-center ${
-              score.percentage >= response.QuestionPaper.Metadata.passingScore
-              ? 'text-green-600'
-              : 'text-red-600'
-            }`}>
-              <div className="mr-2">
-                {score.percentage >= response.QuestionPaper.Metadata.passingScore ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
+              <div className="bg-green-100 text-green-800 px-5 py-3 rounded-lg shadow-sm">
+                <p className="text-lg font-medium">Ready for Interview</p>
               </div>
-              <span className="font-medium">
-                {score.percentage >= response.QuestionPaper.Metadata.passingScore
-                  ? 'Passed'
-                  : 'Failed'
-                } (Minimum passing score: {response.QuestionPaper.Metadata.passingScore}%)
-              </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Detailed Question Review */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-6">Question Review</h2>
-
-        <div className="space-y-8">
-          {response.Answers.map((answer: QuestionResponse, index: number) => {
-            // Handle potential missing Question data gracefully
-            if (!answer.Question) {
-              return (
-                <div key={answer.ID || index} className="border-b pb-6 last:border-b-0 text-red-600">
-                  Error: Question data is missing for this answer.
-                </div>
-              );
-            }
-
-            const isCorrect = answer.Question.CorrectAnswer &&
-                              answer.answer?.trim().toLowerCase() === answer.Question.CorrectAnswer.trim().toLowerCase();
-            const answerChoices = parseAnswerChoices(answer.Question.AnswerChoices);
-
+      {/* Topic and Difficulty Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Topic Breakdown */}
+        <div className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Topic Breakdown</h2>
+          
+          {response.topicWiseScore && response.topicWiseScore.map((topic, index) => {
+            const topicName = Object.keys(topic)[0];
+            const scoreText = topic[topicName];
+            const [correct, total] = scoreText.split('/').map(Number);
+            const percentage = Math.round((correct / total) * 100);
+            
             return (
-              <div key={answer.ID} className="border-b pb-6 last:border-b-0">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-lg font-semibold text-gray-700">Question {index + 1}</span>
-                  {isCorrect ? (
-                    <span className="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">Correct</span>
-                  ) : (
-                    <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">Incorrect</span>
-                  )}
+              <div key={index} className="mb-4">
+                <div className="flex justify-between mb-1">
+                  <span className="text-base font-medium">{topicName.charAt(0).toUpperCase() + topicName.slice(1)}: {scoreText}</span>
+                  <span className="text-sm font-medium text-gray-600">({percentage}%)</span>
                 </div>
-
-                {/* Question Description */}
-                <p className="text-md text-gray-800 mb-3">{answer.Question.Description}</p>
-
-                {/* --- TAGS DISPLAY --- */}
-                {answer.Question.Tags && answer.Question.Tags.length > 0 && (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {answer.Question.Tags.map((tag) => (
-                      <span
-                        key={tag.ID}
-                        className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full"
-                      >
-                        {tag.Name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {/* --- END TAGS DISPLAY --- */}
-
-
-                {/* Answer Choices or Direct Answer */}
-                {answerChoices.length > 0 ? (
-                  <div className="space-y-2 mb-4">
-                    {answerChoices.map((choice, idx) => {
-                      const isUserAnswer = choice === answer.answer;
-                      const isCorrectChoice = choice === answer.Question.CorrectAnswer;
-                      let bgColor = 'bg-white';
-                      let borderColor = 'border-gray-300';
-                      let textColor = 'text-gray-900';
-
-                      if (isCorrectChoice) {
-                        bgColor = 'bg-green-50';
-                        borderColor = 'border-green-400';
-                        textColor = 'text-green-900';
-                      } else if (isUserAnswer && !isCorrect) {
-                        bgColor = 'bg-red-50';
-                        borderColor = 'border-red-400';
-                        textColor = 'text-red-900';
-                      }
-
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-3 border rounded-lg ${bgColor} ${borderColor} ${textColor}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="flex-1">{choice}</span>
-                            {/* Indicators */}
-                            {isCorrectChoice && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                            {isUserAnswer && !isCorrect && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            )}
-                            {isUserAnswer && isCorrect && (
-                               <span className="text-xs text-gray-500 ml-2">(Your Answer)</span>
-                            )}
-                             {!isUserAnswer && !isCorrectChoice && isCorrect && choice === answer.answer && (
-                               <span className="text-xs text-gray-500 ml-2">(Your Answer)</span>
-                             )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  // Handle non-multiple choice questions (e.g., text input)
-                  <div className="mb-4 space-y-3">
-                     <div>
-                       <span className="text-sm font-medium text-gray-600">Your Answer:</span>
-                       <div className={`p-3 border rounded-lg mt-1 ${isCorrect ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
-                         {answer.answer || <span className="text-gray-400 italic">No answer provided</span>}
-                       </div>
-                     </div>
-                     {!isCorrect && (
-                       <div>
-                         <span className="text-sm font-medium text-gray-600">Correct Answer:</span>
-                         <div className="p-3 border rounded-lg mt-1 bg-green-50 border-green-300">
-                           {answer.Question.CorrectAnswer}
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                )}
-
-                {/* Explanation */}
-                {answer.Question.Explanation && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold mb-1 text-gray-700">Explanation:</h4>
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                      {answer.Question.Explanation}
-                    </div>
-                  </div>
-                )}
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+                </div>
               </div>
             );
           })}
         </div>
+
+        {/* Difficulty Breakdown */}
+        <div className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Difficulty Breakdown</h2>
+          
+          <div className="space-y-2">
+            {response.difficultyWiseScore && response.difficultyWiseScore.map((diff, index) => {
+              const difficultyName = Object.keys(diff)[0];
+              const scoreText = diff[difficultyName];
+              // Ensure scoreText is valid before splitting
+              if (typeof scoreText !== 'string' || !scoreText.includes('/')) {
+                  console.warn("Invalid difficulty score format:", scoreText);
+                  return <div key={index} className="text-red-500">Invalid difficulty data</div>; // Or handle differently
+              }
+              const [correct, total] = scoreText.split('/').map(Number);
+              // Add check for NaN after map and division by zero
+              const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+              if (isNaN(correct) || isNaN(total) || isNaN(percentage)) {
+                console.warn("NaN detected in difficulty calculation:", { scoreText, correct, total, percentage });
+                 return <div key={index} className="text-red-500">Calculation error</div>;
+              }
+              const colors = ['text-blue-600', 'text-green-600', 'text-orange-500'];
+              const bgColors = ['bg-blue-400', 'bg-green-400', 'bg-orange-400']; // Adjusted for visibility
+
+              return (
+                <div key={index} className="flex items-center justify-between">
+                   <div className="flex items-center">
+                    <span className={`h-3 w-3 rounded-full ${bgColors[index % bgColors.length]} mr-2 flex-shrink-0`}></span>
+                    <span className={`${colors[index % colors.length]} font-medium mr-2`}>
+                      {difficultyName.charAt(0).toUpperCase() + difficultyName.slice(1)}:
+                    </span>
+                    <span className="text-gray-600">{scoreText}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700">{percentage}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Preparation Advice */}
+      <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-6 mb-8">
+        <div className="flex items-start">
+          <div className="flex-shrink-0 mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Preparation Advice</h2>
+            <p className="text-gray-800">{response.preparationAdvice}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Resources & Next Steps -> Renamed to Question Review */}
+      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Question Review</h2>
+        {response.Answers && response.Answers.length > 0 ? (
+          <div className="space-y-6"> {/* Added container for spacing */}
+            {response.Answers.map((answerDetail, index) => {
+              const question = answerDetail.Question;
+              if (!question) {
+                console.warn(`Missing question data for answer at index ${index}`);
+                return <p key={`missing-${index}`}>Missing question data for review (Index: {index}).</p>;
+              }
+
+              const userAnswer = answerDetail.answer;
+              const correctAnswer = question.CorrectAnswer;
+              // Ensure case-insensitivity and trim whitespace for comparison
+              const isCorrect = userAnswer?.trim().toLowerCase() === correctAnswer?.trim().toLowerCase();
+              const tags = question.Tags?.map(tag => tag.Name).join(', ') || 'General';
+
+              return (
+                <div key={answerDetail.ID || `question-${index}`} className="border-b border-gray-200 pb-6 last:border-b-0"> {/* Added border between questions */}
+                  {/* Question Header */}
+                  <div className="flex items-center mb-3 flex-wrap"> {/* Added flex-wrap */}
+                    <span className={`${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-3 py-1 rounded-md mr-3 font-medium whitespace-nowrap`}> {/* Added whitespace-nowrap */}
+                      {`Q${index + 1}: ${isCorrect ? 'Correct' : 'Incorrect'}`}
+                    </span>
+                    <span className="font-semibold mr-2" title={question.Description}>
+                      {question.Description || `Question ID: ${question.ID}`}
+                    </span>
+                    <span className="text-gray-500 text-sm">({tags})</span>
+                  </div>
+
+                  {/* Answer display */}
+                  <div className="mb-4 pl-4 border-l-4 border-gray-200">
+                    <p className="mb-1 text-gray-700"><span className="font-medium">Your Answer:</span> {userAnswer || <span className="italic text-gray-500">Not Answered</span>}</p>
+                    <p className="text-gray-700"><span className="font-medium">Correct Answer:</span> {correctAnswer}</p>
+                  </div>
+
+                  {/* Explanation & Materials */}
+                  {(question.Explanation || (question.Materials && question.Materials.length > 0)) && (
+                    <div className="space-y-3 mt-4 bg-gray-50 p-4 rounded-md">
+                      {question.Explanation && (
+                        <div>
+                          <h3 className="font-medium mb-1 text-gray-800">Explanation</h3>
+                          <p className="text-gray-600">{question.Explanation}</p>
+                        </div>
+                      )}
+                      {question.Materials && question.Materials.length > 0 && (
+                         <div>
+                           <h3 className="font-medium mb-2 text-gray-800">Related Materials</h3>
+                           <ul className="list-disc list-inside space-y-1">
+                           {question.Materials.map((material, idx) => (
+                             <li key={idx}>
+                                <a
+                                  href={material.URL}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline hover:text-blue-700"
+                                >
+                                  {material.Description || material.URL}
+                                </a>
+                              </li>
+                           ))}
+                           </ul>
+                         </div>
+                      )}
+                    </div>
+                  )}
+                  {!question.Explanation && (!question.Materials || question.Materials.length === 0) && (
+                     <p className="text-gray-500 italic mt-2">No explanation or materials available for this question.</p>
+                   )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p>No question details available for review.</p>
+        )}
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-8 flex flex-col sm:flex-row justify-between gap-4">
+      <div className="flex justify-center gap-4 mb-8">
         <button
-          onClick={() => router.push('/diagnostic-tests')} // Adjust path if needed
+          onClick={() => router.push(`/diagnostic-tests/${testId}/start`)}
           className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition duration-150 ease-in-out"
         >
-          Back to Tests List
+          Retake Test
         </button>
-
-        {/* Conditionally show retake button based on testId */}
-        {testId && (
-             <button
-               onClick={() => router.push(`/diagnostic-tests/${testId}/start`)}
-               className="px-5 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-150 ease-in-out"
-             >
-               Retake Test
-             </button>
-        )}
+        
+        <button
+          onClick={() => router.push('/diagnostic-tests')}
+          className="px-5 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-150 ease-in-out"
+        >
+          Try Another
+        </button>
       </div>
     </div>
   );

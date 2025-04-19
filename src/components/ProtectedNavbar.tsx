@@ -27,7 +27,7 @@ const ProtectedNavbar = () => {
   return (
     <nav className="bg-gradient-to-r from-[#1F2937] to-[#374151] text-white p-4 mb-6 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+        <Link href="/diagnostic-tests" className="flex items-center hover:opacity-90 transition-opacity">
           {/* Logo with gradient */}
           <div className="h-10 flex items-center">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-[#00A02B] to-[#5DD62C] text-transparent bg-clip-text">

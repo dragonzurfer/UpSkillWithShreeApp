@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import React from "react";
-import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { authOptions } from "../../api/auth/[...nextauth]/auth";
 
 interface AdminLayoutProps {
   children: React.ReactNode;

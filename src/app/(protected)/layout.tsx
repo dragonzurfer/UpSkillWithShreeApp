@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import React from "react";
-import { authOptions } from "../api/auth/[...nextauth]/route";
+import { authOptions } from "../api/auth/[...nextauth]/auth";
 import ProtectedNavbar from "@/components/ProtectedNavbar";
 import NextAuthProvider from "@/components/NextAuthProvider";
 import { redirect } from "next/navigation";

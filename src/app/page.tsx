@@ -99,7 +99,7 @@ export default function Home() {
               Explore Tests
             </a>
             <a
-              href="/sample"
+              href="/diagnostic-tests"
               className="inline-block bg-white text-green-700 font-semibold py-4 px-10 rounded-lg border-2 border-green-600 shadow-md hover:bg-green-50 hover:scale-105 transition duration-300"
             >
               Take a Sample Test

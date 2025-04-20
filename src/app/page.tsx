@@ -168,6 +168,175 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Coaching Sessions Section */}
+      <section className="w-full py-12 md:py-16 px-8 md:px-12 border-t border-gray-200">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4">1:1 Coaching Sessions</h2>
+          <p className="text-xl text-gray-600 text-center mb-16 max-w-3xl mx-auto">
+            Personalized coaching to accelerate your learning and career growth.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Discovery Call */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <h3 className="text-xl font-semibold mb-4 text-center text-green-700">Discovery Call</h3>
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">₹699</span>
+                  <span className="text-gray-500 ml-2 line-through">₹999</span>
+                  <p className="text-gray-600 mt-1">15-minute meeting</p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Clarify personal goals</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Identify actionable steps</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Gain clarity & confidence</span>
+                  </li>
+                </ul>
+                <a href="https://topmate.io/upskillwithshree/1515780" target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                    Book Now
+                  </button>
+                </a>
+              </div>
+            </div>
+            
+            {/* Interview Prep & Tips */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <h3 className="text-xl font-semibold mb-4 text-center text-green-700">Interview Prep & Tips</h3>
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">₹1,199</span>
+                  <span className="text-gray-500 ml-2 line-through">₹1,499</span>
+                  <p className="text-gray-600 mt-1">30-minute meeting</p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Interview roadmap</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Google FAQs walkthrough</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Personalized blueprint</span>
+                  </li>
+                </ul>
+                <a href="https://topmate.io/upskillwithshree/1515774" target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                    Book Now
+                  </button>
+                </a>
+              </div>
+            </div>
+            
+            {/* Career Guidance */}
+            <div className="bg-white rounded-xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-2 border-green-500 relative">
+              <div className="absolute top-0 right-0 bg-green-600 text-white px-4 py-1 rounded-bl-lg font-medium">
+                Most Popular
+              </div>
+              <div className="p-8">
+                <h3 className="text-xl font-semibold mb-4 text-center text-green-700">Career Guidance</h3>
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">₹1,199</span>
+                  <span className="text-gray-500 ml-2 line-through">₹1,999</span>
+                  <p className="text-gray-600 mt-1">30-minute meeting</p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>30-day job-switch plan</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Resume optimization</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Skill-gap roadmap</span>
+                  </li>
+                </ul>
+                <a href="https://topmate.io/upskillwithshree/1515776" target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                    Book Now
+                  </button>
+                </a>
+              </div>
+            </div>
+            
+            {/* Google Mock Interview */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="p-8">
+                <h3 className="text-xl font-semibold mb-4 text-center text-green-700">Google Mock Interview</h3>
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">₹4,999</span>
+                  <span className="text-gray-500 ml-2 line-through">₹5,999</span>
+                  <p className="text-gray-600 mt-1">60-minute meeting</p>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Realistic coding challenges</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>STAR method practice</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Live actionable feedback</span>
+                  </li>
+                </ul>
+                <a href="https://topmate.io/upskillwithshree/1515775" target="_blank" rel="noopener noreferrer" className="block w-full">
+                  <button className="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                    Book Now
+                  </button>
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center mt-10">
+            <Link href="/products" className="inline-block bg-gradient-to-r from-green-600 to-green-800 text-white font-bold py-4 px-10 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition duration-300">
+              View All Sessions
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Featured Assessments - Added top margin */}
       <section className="w-full py-12 md:py-16 border-t border-gray-200 px-8 md:px-12">
         <div className="max-w-6xl mx-auto">

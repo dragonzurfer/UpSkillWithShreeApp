@@ -23,6 +23,11 @@ interface QuestionPaper {
   UpdatedAt: string;
 }
 
+interface Tag {
+  ID: number;
+  Name: string;
+}
+
 // Props for the component
 interface QuestionPaperManagementProps {
   BACKEND_URL: string | undefined;
@@ -77,6 +82,14 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
   const [selectedPaperId, setSelectedPaperId] = useState<number | null>(null);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loadingAvailableQuestions, setLoadingAvailableQuestions] = useState<boolean>(false);
+  const [selectedAvailableQuestions, setSelectedAvailableQuestions] = useState<Set<number>>(new Set());
+
+  // State for tag filtering
+  const [positiveTagFilter, setPositiveTagFilter] = useState<string>('');
+  const [negativeTagFilter, setNegativeTagFilter] = useState<string>('');
+
+  // State for selected current questions
+  const [selectedCurrentQuestions, setSelectedCurrentQuestions] = useState<Set<number>>(new Set());
 
   // Fetch all question papers
   const fetchPapers = useCallback(async () => {
@@ -105,17 +118,28 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
     }
   }, [BACKEND_URL, getAuthHeaders, parseError]);
 
-  // Fetch available questions for a paper
-  const fetchAvailableQuestions = useCallback(async (paperId: number) => {
-    const headers = getAuthHeaders(false);
+  // Fetch available questions for a paper with tag filters
+  const fetchAvailableQuestions = useCallback(async (
+    paperId: number,
+    positiveTags: string[] = [], // Default to empty array
+    negativeTags: string[] = []  // Default to empty array
+  ) => {
+    const headers = getAuthHeaders(); // Ensure Content-Type is included
     if (!headers) return;
 
     setLoadingAvailableQuestions(true);
+    setError(null); // Clear previous errors specific to this section
     try {
-      const response = await fetch(`${BACKEND_URL}/v1/api/papers/${paperId}/questions/available`, {
-        method: 'GET',
+      // Use the new endpoint and POST method
+      const response = await fetch(`${BACKEND_URL}/v1/api/papers/${paperId}/questions/available/tag`, {
+        method: 'POST',
         headers,
         cache: 'no-store',
+        body: JSON.stringify({
+          paperID: paperId.toString(), // Backend expects string? Double-check if needed. Assuming string based on curl.
+          positiveTags: positiveTags.filter(tag => tag.trim() !== ''), // Filter out empty strings
+          negativeTags: negativeTags.filter(tag => tag.trim() !== ''), // Filter out empty strings
+        }),
       });
 
       if (!response.ok) {
@@ -125,8 +149,9 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
       const data = await response.json();
       setAvailableQuestions(data || []);
     } catch (e) {
-      console.error('Failed to fetch available questions:', e);
-      setAvailableQuestions([]);
+       // Use setError to display errors related to fetching/filtering
+      setError(e instanceof Error ? e.message : 'Failed to fetch/filter available questions');
+      setAvailableQuestions([]); // Clear questions on error
     } finally {
       setLoadingAvailableQuestions(false);
     }
@@ -324,16 +349,163 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
     }
   };
 
-  // Handle opening question management for a paper
+  // Handle opening question management for a paper - fetch initially without filters
   const handleManageQuestions = (paperId: number) => {
     setSelectedPaperId(paperId);
-    fetchAvailableQuestions(paperId);
+    setPositiveTagFilter(''); // Reset filters when opening
+    setNegativeTagFilter('');
+    fetchAvailableQuestions(paperId); // Initial fetch without filters
+  };
+
+  // Handler for applying filters
+  const handleApplyFilters = () => {
+    if (selectedPaperId === null) return;
+    const positiveTags = positiveTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+    const negativeTags = negativeTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+    fetchAvailableQuestions(selectedPaperId, positiveTags, negativeTags);
   };
 
   // Current paper's questions
   const currentPaperQuestions = selectedPaperId 
     ? papers.find(p => p.ID === selectedPaperId)?.Questions || []
     : [];
+
+  // Handlers for current question selection
+  const handleSelectCurrentQuestion = (questionId: number, isSelected: boolean) => {
+    setSelectedCurrentQuestions(prev => {
+      const next = new Set(prev);
+      if (isSelected) {
+        next.add(questionId);
+      } else {
+        next.delete(questionId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllCurrentQuestions = (isSelected: boolean) => {
+    const currentIds = currentPaperQuestions.map(q => q.ID);
+    if (isSelected) {
+      setSelectedCurrentQuestions(new Set(currentIds));
+    } else {
+      setSelectedCurrentQuestions(new Set());
+    }
+  };
+
+  // Handler for removing selected questions
+  const handleRemoveSelectedQuestions = async () => {
+    if (!selectedPaperId || selectedCurrentQuestions.size === 0) return;
+    if (!confirm(`Are you sure you want to remove ${selectedCurrentQuestions.size} question(s) from this paper?`)) return;
+
+    const questionIdsToRemove = Array.from(selectedCurrentQuestions);
+    setLoading(true); // Use main loading indicator
+    setError(null);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const questionId of questionIdsToRemove) {
+      try {
+        // Re-use single remove logic
+        const headers = getAuthHeaders();
+        if (!headers) throw new Error("Authentication required.");
+
+        const response = await fetch(`${BACKEND_URL}/v1/api/papers/${selectedPaperId}/questions/${questionId}/remove`, {
+          method: 'POST',
+          headers,
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to remove question ${questionId}: ${await parseError(response)}`);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch (e) {
+        console.error(`Error removing question ${questionId}:`, e);
+        errorCount++;
+      }
+    }
+
+    // Refresh lists and clear selection after attempting all removals
+    await fetchAvailableQuestions(selectedPaperId, positiveTagFilter.split(',').map(t=>t.trim()).filter(Boolean), negativeTagFilter.split(',').map(t=>t.trim()).filter(Boolean));
+    await fetchPapers();
+    setSelectedCurrentQuestions(new Set()); // Clear selection
+    setLoading(false);
+
+    if (errorCount > 0) {
+      setError(`Removed ${successCount} questions, but failed to remove ${errorCount}. Check console for details.`);
+    } else if (successCount > 0) {
+      console.log(`Successfully removed ${successCount} questions.`);
+    }
+  };
+
+  // Handlers for available question selection
+  const handleSelectAvailableQuestion = (questionId: number, isSelected: boolean) => {
+    setSelectedAvailableQuestions(prev => {
+      const next = new Set(prev);
+      if (isSelected) {
+        next.add(questionId);
+      } else {
+        next.delete(questionId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllAvailableQuestions = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedAvailableQuestions(new Set(availableQuestions.map(q => q.ID)));
+    } else {
+      setSelectedAvailableQuestions(new Set());
+    }
+  };
+
+  // Handler for adding selected questions
+  const handleAddSelectedQuestions = async () => {
+    if (!selectedPaperId || selectedAvailableQuestions.size === 0) return;
+
+    const questionIdsToAdd = Array.from(selectedAvailableQuestions);
+    setLoading(true); // Use main loading indicator for bulk actions
+    setError(null);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const questionId of questionIdsToAdd) {
+      try {
+        // Re-use the single add logic for now, assuming no bulk endpoint
+        const headers = getAuthHeaders();
+        if (!headers) throw new Error("Authentication required.");
+
+        const response = await fetch(`${BACKEND_URL}/v1/api/papers/${selectedPaperId}/questions/${questionId}/add`, {
+          method: 'POST',
+          headers,
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to add question ${questionId}: ${await parseError(response)}`);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch (e) {
+        console.error(`Error adding question ${questionId}:`, e);
+        errorCount++;
+      }
+    }
+
+    // Refresh lists and clear selection after attempting all adds
+    await fetchAvailableQuestions(selectedPaperId, positiveTagFilter.split(',').map(t=>t.trim()).filter(Boolean), negativeTagFilter.split(',').map(t=>t.trim()).filter(Boolean));
+    await fetchPapers();
+    setSelectedAvailableQuestions(new Set()); // Clear selection
+    setLoading(false);
+
+    if (errorCount > 0) {
+      setError(`Added ${successCount} questions, but failed to add ${errorCount}. Check console for details.`);
+    } else if (successCount > 0) {
+       // Maybe add an InfoMessage prop later for success
+       console.log(`Successfully added ${successCount} questions.`);
+    }
+  };
 
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-8">
@@ -460,17 +632,35 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Current Questions */}
-            <div className="border rounded p-4">
+            <div className="border rounded p-4 flex flex-col">
               <h4 className="font-medium mb-2">Current Questions ({currentPaperQuestions.length})</h4>
               {currentPaperQuestions.length === 0 ? (
                 <p className="text-gray-500 text-sm">No questions added to this paper yet.</p>
               ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  <ul className="divide-y">
-                    {currentPaperQuestions.map(question => (
-                      <li key={question.ID} className="py-3">
-                        <div className="flex justify-between">
-                          <div className="pr-4 flex-1">
+                <>
+                  <div className="flex-grow max-h-96 overflow-y-auto mb-3">
+                    <ul className="divide-y">
+                      {/* Select All Checkbox */}
+                      <li className="py-2 flex items-center sticky top-0 bg-white z-10 border-b">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                          checked={selectedCurrentQuestions.size > 0 && selectedCurrentQuestions.size === currentPaperQuestions.length}
+                          onChange={(e) => handleSelectAllCurrentQuestions(e.target.checked)}
+                          disabled={loading}
+                        />
+                        <label className="text-sm font-medium">Select All</label>
+                      </li>
+                      {currentPaperQuestions.map(question => (
+                        <li key={question.ID} className="py-3 flex items-center">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3 disabled:opacity-50"
+                            checked={selectedCurrentQuestions.has(question.ID)}
+                            onChange={(e) => handleSelectCurrentQuestion(question.ID, e.target.checked)}
+                            disabled={loading}
+                          />
+                          <div className="flex-1 pr-4">
                             <p className="text-sm font-medium mb-1">{question.Description}</p>
                             <p className="text-xs text-gray-500 mb-1">
                               <span className="font-semibold">Answer:</span> {question.CorrectAnswer}
@@ -478,8 +668,8 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
                             {question.Tags && question.Tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {question.Tags.map(tag => (
-                                  <span 
-                                    key={tag.ID} 
+                                  <span
+                                    key={tag.ID}
                                     className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
                                   >
                                     {tag.Name}
@@ -488,35 +678,93 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
                               </div>
                             )}
                           </div>
-                          <button 
-                            onClick={() => handleRemoveQuestionFromPaper(selectedPaperId, question.ID)}
-                            className="text-red-500 text-xs px-2 py-1 h-8 border border-red-300 rounded hover:bg-red-50 self-start"
-                            disabled={loading}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* Remove Selected Button */}
+                  <div className="mt-auto pt-3 border-t">
+                    <button
+                      onClick={handleRemoveSelectedQuestions}
+                      className={dangerButtonClass}
+                      disabled={loading || selectedCurrentQuestions.size === 0}
+                    >
+                      {loading ? 'Removing...' : `Remove Selected (${selectedCurrentQuestions.size})`}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
 
             {/* Available Questions */}
-            <div className="border rounded p-4">
+            <div className="border rounded p-4 flex flex-col">
               <h4 className="font-medium mb-2">Available Questions ({availableQuestions.length})</h4>
+
+              {/* Filter Section */}
+              <div className="mb-4 p-3 border rounded bg-gray-50 space-y-2">
+                <h5 className="text-sm font-medium">Filter by Tags</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Include tags (comma-sep.)</label>
+                    <input
+                      type="text"
+                      value={positiveTagFilter}
+                      onChange={(e) => setPositiveTagFilter(e.target.value)}
+                      className={`${inputClass} text-xs`}
+                      placeholder="e.g., Arrays, Strings"
+                      disabled={loadingAvailableQuestions || loading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Exclude tags (comma-sep.)</label>
+                    <input
+                      type="text"
+                      value={negativeTagFilter}
+                      onChange={(e) => setNegativeTagFilter(e.target.value)}
+                      className={`${inputClass} text-xs`}
+                      placeholder="e.g., difficulty:hard"
+                      disabled={loadingAvailableQuestions || loading}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleApplyFilters}
+                  className={`${secondaryButtonClass} text-xs px-3 py-1`}
+                  disabled={loadingAvailableQuestions || loading}
+                >
+                  {loadingAvailableQuestions ? 'Filtering...' : 'Apply Filters'}
+                </button>
+              </div>
+
               {loadingAvailableQuestions ? (
                 <LoadingIndicator>Loading available questions...</LoadingIndicator>
               ) : availableQuestions.length === 0 ? (
-                <p className="text-gray-500 text-sm">No more questions available to add.</p>
+                <p className="text-gray-500 text-sm">No matching questions available.</p>
               ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  <ul className="divide-y">
-                    {availableQuestions.map(question => (
-                      <li key={question.ID} className="py-3">
-                        <div className="flex justify-between">
-                          <div className="pr-4 flex-1">
+                <>
+                  <div className="flex-grow max-h-80 overflow-y-auto mb-3">
+                    <ul className="divide-y">
+                      {/* Select All Checkbox */}
+                      <li className="py-2 flex items-center sticky top-0 bg-white z-10 border-b">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                          checked={selectedAvailableQuestions.size > 0 && selectedAvailableQuestions.size === availableQuestions.length}
+                          onChange={(e) => handleSelectAllAvailableQuestions(e.target.checked)}
+                          disabled={loading}
+                        />
+                        <label className="text-sm font-medium">Select All</label>
+                      </li>
+                      {availableQuestions.map(question => (
+                        <li key={question.ID} className="py-3 flex items-center">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3 disabled:opacity-50"
+                            checked={selectedAvailableQuestions.has(question.ID)}
+                            onChange={(e) => handleSelectAvailableQuestion(question.ID, e.target.checked)}
+                            disabled={loading}
+                          />
+                          <div className="flex-1">
                             <p className="text-sm font-medium mb-1">{question.Description}</p>
                             <p className="text-xs text-gray-500 mb-1">
                               <span className="font-semibold">Answer:</span> {question.CorrectAnswer}
@@ -524,8 +772,8 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
                             {question.Tags && question.Tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {question.Tags.map(tag => (
-                                  <span 
-                                    key={tag.ID} 
+                                  <span
+                                    key={tag.ID}
                                     className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
                                   >
                                     {tag.Name}
@@ -534,18 +782,21 @@ const QuestionPaperManagement: React.FC<QuestionPaperManagementProps> = ({
                               </div>
                             )}
                           </div>
-                          <button 
-                            onClick={() => handleAddQuestionToPaper(selectedPaperId, question.ID)}
-                            className="text-green-500 text-xs px-2 py-1 h-8 border border-green-300 rounded hover:bg-green-50 self-start"
-                            disabled={loading}
-                          >
-                            Add
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* Add Selected Button */}
+                  <div className="mt-auto pt-3 border-t">
+                    <button
+                      onClick={handleAddSelectedQuestions}
+                      className={primaryButtonClass}
+                      disabled={loading || selectedAvailableQuestions.size === 0}
+                    >
+                      {loading ? 'Adding...' : `Add Selected (${selectedAvailableQuestions.size})`}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>

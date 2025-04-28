@@ -74,11 +74,19 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     const [newChoice, setNewChoice] = useState<string>('');
     const [tagSearchQuery, setTagSearchQuery] = useState<string>('');
 
+    // State for list filtering
+    const [positiveTagFilter, setPositiveTagFilter] = useState<string>('');
+    const [negativeTagFilter, setNegativeTagFilter] = useState<string>('');
+
     // --- API Calls --- 
 
-    const fetchQuestions = useCallback(async () => {
+    const fetchQuestions = useCallback(async (
+        positiveTags: string[] = [],
+        negativeTags: string[] = []
+    ) => {
         if (!BACKEND_URL) return;
-        const headers = getAuthHeaders(false);
+        // Ensure Content-Type for POST request body
+        const headers = getAuthHeaders(true);
         if (!headers) {
             setError("Authentication required.");
             return;
@@ -86,10 +94,15 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_URL}/v1/api/questions`, { 
-                method: 'GET', 
-                headers, 
-                cache: 'no-store' 
+            // Use the new tag filtering endpoint
+            const response = await fetch(`${BACKEND_URL}/v1/api/questions/tag`, {
+                method: 'POST', // Use POST method
+                headers,
+                cache: 'no-store',
+                body: JSON.stringify({ // Send filters in the body
+                    positiveTags: positiveTags.filter(tag => tag.trim() !== ''),
+                    negativeTags: negativeTags.filter(tag => tag.trim() !== ''),
+                 }),
             });
             if (!response.ok) throw new Error(await parseError(response));
             const data = await response.json();
@@ -116,9 +129,17 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
         }
     }, [BACKEND_URL, getAuthHeaders, parseError]);
 
+    // Initial fetch (without filters)
     useEffect(() => {
         fetchQuestions();
     }, [fetchQuestions]);
+
+    // Handler to apply filters from the UI
+    const handleApplyFilters = () => {
+        const positive = positiveTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+        const negative = negativeTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+        fetchQuestions(positive, negative);
+    };
 
     // --- Modal Handling --- 
 
@@ -284,7 +305,9 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
             }
 
             // --- Finalize --- 
-            await fetchQuestions(); // Re-fetch to update the list
+            const positive = positiveTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+            const negative = negativeTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+            await fetchQuestions(positive, negative);
             closeModal();
 
         } catch (e) {
@@ -309,7 +332,9 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                 headers,
             });
             if (!response.ok && response.status !== 204) throw new Error(await parseError(response)); // 204 No Content is also OK
-            await fetchQuestions(); // Re-fetch
+            const positive = positiveTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+            const negative = negativeTagFilter.split(',').map(t => t.trim()).filter(Boolean);
+            await fetchQuestions(positive, negative);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to delete question');
         }
@@ -397,14 +422,50 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     // --- Render Logic --- 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Question Management</h2>
-            <div className="flex justify-end">
+            <div className="flex justify-between items-start">
+                <h2 className="text-xl font-semibold">Question Management</h2>
                 <button onClick={() => openModal()} className={primaryButtonClass}>
                     Add New Question
                 </button>
             </div>
 
             {error && <ErrorMessage>{error}</ErrorMessage>}
+
+            {/* Filter Section */}
+            <div className="p-4 border rounded bg-gray-50 space-y-3">
+                 <h3 className="text-md font-medium">Filter Questions by Tags</h3>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                   <div>
+                     <label className="block text-sm font-medium mb-1">Include tags (comma-sep.)</label>
+                     <input
+                       type="text"
+                       value={positiveTagFilter}
+                       onChange={(e) => setPositiveTagFilter(e.target.value)}
+                       className={`${inputClass}`}
+                       placeholder="e.g., Arrays, Strings"
+                       disabled={loading}
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium mb-1">Exclude tags (comma-sep.)</label>
+                     <input
+                       type="text"
+                       value={negativeTagFilter}
+                       onChange={(e) => setNegativeTagFilter(e.target.value)}
+                       className={`${inputClass}`}
+                       placeholder="e.g., difficulty:hard"
+                       disabled={loading}
+                     />
+                   </div>
+                 </div>
+                 <button
+                   onClick={handleApplyFilters}
+                   className={`${secondaryButtonClass}`}
+                   disabled={loading}
+                 >
+                   {loading ? 'Filtering...' : 'Apply Filters'}
+                 </button>
+             </div>
 
             <TableContainer>
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -421,7 +482,9 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                     {loading ? (
                         <tr><td colSpan={6}><LoadingIndicator>Loading questions...</LoadingIndicator></td></tr>
                     ) : sortedQuestions.length === 0 ? (
-                        <EmptyTableMessage colSpan={6}>No questions found.</EmptyTableMessage>
+                        <EmptyTableMessage colSpan={6}>
+                            {positiveTagFilter || negativeTagFilter ? 'No questions match the current filters.' : 'No questions found.'}
+                         </EmptyTableMessage>
                     ) : (
                         sortedQuestions.map((q) => (
                             <tr key={q.ID}>

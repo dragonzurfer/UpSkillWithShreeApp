@@ -27,6 +27,9 @@ interface QuestionPaper {
 interface QuestionResponse {
   QuestionID: number;
   Answer: string;
+  QuestionVisitTimestamps: number[];
+  QuestionExitTimestamps: number[];
+  AnswerTimestamps: number[];
 }
 
 // Interface for 402 Payment Required Error Response
@@ -44,6 +47,13 @@ interface PaymentSessionResponse {
   order_id: string; // Assuming order_id might still be returned
   // payment_link is no longer needed here
 }
+
+// Define the EventBucket type for consolidated timestamp tracking
+type EventBucket = {
+  visits: number[];
+  exits: number[];
+  answers: number[];
+};
 
 export default function StartTestPage() {
   const params = useParams();
@@ -71,6 +81,10 @@ export default function StartTestPage() {
 
   // Ref or State to hold the initialized Cashfree instance
   const [cashfree, setCashfree] = useState<Cashfree | null>(null);
+
+  // State for tracking timestamps - replacing the three separate Maps with a single object
+  const [questionEvents, setQuestionEvents] = useState<Record<number, EventBucket>>({});
+  const previousQuestionIndexRef = useRef<number | null>(null);
 
   // Helper function to get auth headers
   const getAuthHeaders = useCallback((includeContentType = true): Record<string, string> | null => {
@@ -155,11 +169,22 @@ export default function StartTestPage() {
 
   // Handle answer changes
   const handleAnswerChange = (questionId: number, answer: string) => {
+    const now = Date.now(); // Get timestamp
+
     setResponses(prev => {
       const newResponses = new Map(prev);
       newResponses.set(questionId, answer);
       return newResponses;
     });
+
+    // Record the answer timestamp in the event bucket
+    setQuestionEvents(prev => {
+      const events = { ...prev };
+      if (!events[questionId]) events[questionId] = { visits: [], exits: [], answers: [] };
+      events[questionId].answers.push(now);
+      return events;
+    });
+
     // Clear any submit errors when user changes answers
     setSubmitError(null);
   };
@@ -217,6 +242,39 @@ export default function StartTestPage() {
   const handleTestSubmit = async () => {
     if (!questionPaper || !BACKEND_URL) return;
     
+    // Record final exit time for the current question before submitting
+    const finalTimestamp = Date.now();
+    const lastQuestionId = questionPaper.Questions[currentQuestionIndex]?.ID;
+    
+    // Always record final exit time on submission
+    if (lastQuestionId !== undefined) {
+      setQuestionEvents(prev => {
+        const events = { ...prev };
+        if (!events[lastQuestionId]) events[lastQuestionId] = { visits: [], exits: [], answers: [] };
+        
+        // Always add a submission exit timestamp - this is different from navigation exits
+        events[lastQuestionId].exits.push(finalTimestamp);
+        return events;
+      });
+    }
+
+    // Make sure all questions have at least one exit timestamp
+    questionPaper.Questions.forEach(question => {
+      const qid = question.ID;
+      if (qid !== lastQuestionId) { // Skip the current question we just handled
+        setQuestionEvents(prev => {
+          const events = { ...prev };
+          if (!events[qid]) events[qid] = { visits: [], exits: [], answers: [] };
+          
+          // If a question has visits but no exits, add the final timestamp as exit
+          if (events[qid].visits.length > 0 && events[qid].exits.length === 0) {
+            events[qid].exits.push(finalTimestamp);
+          }
+          return events;
+        });
+      }
+    });
+
     // Validate responses first
     if (!validateResponses()) {
       return;
@@ -230,17 +288,18 @@ export default function StartTestPage() {
       const headers = getAuthHeaders();
       if (!headers) {
         setError("Authentication required to submit this test.");
+        setSubmitting(false); // Stop submission if no headers
         return;
       }
 
-      // Prepare question responses
-      const questionResponses: QuestionResponse[] = [];
-      questionPaper.Questions.forEach(question => {
-        questionResponses.push({
-          QuestionID: question.ID,
-          Answer: responses.get(question.ID) || ""
-        });
-      });
+      // Prepare question responses using the consolidated questionEvents object
+      const questionResponses: QuestionResponse[] = questionPaper.Questions.map(question => ({
+        QuestionID: question.ID,
+        Answer: responses.get(question.ID) || "",
+        QuestionVisitTimestamps: questionEvents[question.ID]?.visits || [],
+        QuestionExitTimestamps: questionEvents[question.ID]?.exits || [],
+        AnswerTimestamps: questionEvents[question.ID]?.answers || []
+      }));
 
       // Submit the response
       const response = await fetch(`${BACKEND_URL}/v1/api/responses`, {
@@ -253,7 +312,15 @@ export default function StartTestPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to submit test: ${response.statusText}`);
+        // Try to get more specific error from backend if possible
+        let errorBody = `Failed to submit test: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if(errorData.message) errorBody = errorData.message;
+        } catch (jsonError) {
+          // Ignore if response is not JSON
+        }
+        throw new Error(errorBody);
       }
 
       // Set test as completed
@@ -268,6 +335,7 @@ export default function StartTestPage() {
       }, 1500);
       
     } catch (err) {
+      console.error("Submission Error:", err); // Log the actual error
       setError(err instanceof Error ? err.message : 'An error occurred while submitting the test');
     } finally {
       setSubmitting(false);
@@ -430,6 +498,77 @@ export default function StartTestPage() {
       setInitiatingPayment(false);
     }
   };
+
+  // Effect to track the initial visit to the first question
+  useEffect(() => {
+    if (!questionPaper || !questionPaper.Questions || questionPaper.Questions.length === 0) {
+      return;
+    }
+
+    // Only track first question on initial load
+    const initialQid = questionPaper.Questions[0]?.ID;
+    if (initialQid !== undefined) {
+      // Add a 200ms delay to the visit timestamp
+      const visitTimer = setTimeout(() => {
+        setQuestionEvents(prev => {
+          const events = { ...prev };
+          if (!events[initialQid]) events[initialQid] = { visits: [], exits: [], answers: [] };
+          events[initialQid].visits.push(Date.now());
+          return events;
+        });
+      }, 200);
+
+      // Initialize previousQuestionIndexRef
+      previousQuestionIndexRef.current = 0;
+
+      return () => clearTimeout(visitTimer);
+    }
+  }, [questionPaper]); // Only run when question paper loads
+
+  // Effect to track question visit and exit times during navigation
+  useEffect(() => {
+    if (!questionPaper || !questionPaper.Questions || questionPaper.Questions.length === 0 || previousQuestionIndexRef.current === null) {
+      return;
+    }
+
+    // Only run after the first question is already loaded and we're navigating
+    const now = Date.now();
+    const newIdx = currentQuestionIndex;
+    const oldIdx = previousQuestionIndexRef.current;
+
+    // Skip if this is the initial render or same question
+    if (newIdx === oldIdx) return;
+
+    const newQid = questionPaper.Questions[newIdx]?.ID;
+    const oldQid = questionPaper.Questions[oldIdx]?.ID;
+
+    // Record exit for old question immediately - only if the indices are different
+    if (oldQid !== undefined && oldIdx !== newIdx) {
+      setQuestionEvents(prev => {
+        const events = { ...prev };
+        if (!events[oldQid]) events[oldQid] = { visits: [], exits: [], answers: [] };
+        events[oldQid].exits.push(now);
+        return events;
+      });
+    }
+
+    // Record visit for new question with a delay
+    if (newQid !== undefined) {
+      const visitTimer = setTimeout(() => {
+        setQuestionEvents(prev => {
+          const events = { ...prev };
+          if (!events[newQid]) events[newQid] = { visits: [], exits: [], answers: [] };
+          events[newQid].visits.push(Date.now()); // Use current timestamp after delay
+          return events;
+        });
+      }, 200);
+
+      // Update the ref for the next change
+      previousQuestionIndexRef.current = newIdx;
+
+      return () => clearTimeout(visitTimer);
+    }
+  }, [currentQuestionIndex]); // Only depend on the index changing, not questionPaper
 
   // Show loading state
   if (loading) {

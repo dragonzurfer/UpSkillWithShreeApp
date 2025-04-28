@@ -5,6 +5,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { Popover, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 import { fetchWithAuth, fetchJsonWithAuth } from '@/utils/api';
 
 // Define interfaces
@@ -58,6 +60,8 @@ export default function DiagnosticTestsPage() {
   const [userResponses, setUserResponses] = useState<Response[]>([]);
   const [activeTab, setActiveTab] = useState<'available' | 'completed'>('available');
   const [expandedPapers, setExpandedPapers] = useState<Record<string, boolean>>({});
+  const [availableFilters, setAvailableFilters] = useState<Record<string, string[]>>({});
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
 
   // Fixed CTA button text
   const ctaText = "Start Diagnostic Now";
@@ -98,6 +102,31 @@ export default function DiagnosticTestsPage() {
           });
           
           setQuestionPapers(papersData || []);
+
+          // Extract unique filter options from metadata
+          const filters: Record<string, Set<string>> = {};
+          (papersData || []).forEach(paper => {
+            if (paper.Metadata) {
+              Object.entries(paper.Metadata).forEach(([key, value]) => {
+                // Only consider string values for filtering for simplicity now
+                if (typeof value === 'string' && value.trim() !== '') {
+                  if (!filters[key]) {
+                    filters[key] = new Set<string>();
+                  }
+                  filters[key].add(value);
+                }
+                // Could extend later to handle numbers, booleans, etc.
+              });
+            }
+          });
+          // Convert Sets to sorted arrays
+          const sortedFilters: Record<string, string[]> = {};
+          Object.keys(filters).sort().forEach(key => {
+            sortedFilters[key] = Array.from(filters[key]).sort();
+          });
+          setAvailableFilters(sortedFilters);
+          setSelectedFilters({}); // Reset filters on data load
+
         } catch (papersError) {
           console.error("Error fetching papers:", papersError);
           setError(papersError instanceof Error ? papersError.message : 'Failed to fetch tests');
@@ -143,6 +172,31 @@ export default function DiagnosticTestsPage() {
   // Get completed test IDs
   const completedTestIds = new Set(userResponses.map(response => response.questionPaperId));
 
+  // --- Filtering Logic ---
+  // Filter available papers based on selected filters
+  const filteredAvailablePapers = questionPapers.filter(paper => {
+    // If no filters are selected, show all papers
+    if (Object.keys(selectedFilters).length === 0 || Object.values(selectedFilters).every(v => v.length === 0)) {
+      return true;
+    }
+
+    // Check if the paper matches all active filter criteria
+    for (const [filterKey, selectedValues] of Object.entries(selectedFilters)) {
+      // If a filter key has selected values, the paper must match one of them
+      if (selectedValues.length > 0) {
+        const paperValue = paper.Metadata?.[filterKey];
+        // If the paper doesn't have the metadata key or its value is not in the selected list, it doesn't match
+        if (paperValue === undefined || typeof paperValue !== 'string' || !selectedValues.includes(paperValue)) {
+          return false;
+        }
+      }
+    }
+
+    // If the paper passed all active filter checks, include it
+    return true;
+  });
+  // --- End Filtering Logic ---
+
   // Show all papers in available tests (don't filter out completed ones)
   const availablePapers = questionPapers;
 
@@ -173,6 +227,31 @@ export default function DiagnosticTestsPage() {
       [paperId]: !prev[paperId]
     }));
   };
+
+  // Handle filter changes
+  const handleFilterChange = (key: string, value: string) => {
+    setSelectedFilters(prevSelectedFilters => {
+      const currentValues = prevSelectedFilters[key] || [];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(v => v !== value) // Remove value
+        : [...currentValues, value]; // Add value
+
+      // Create a new object to ensure state update
+      const updatedFilters = { ...prevSelectedFilters };
+
+      if (newValues.length > 0) {
+        updatedFilters[key] = newValues;
+      } else {
+        // Remove the key if no values are selected for it
+        delete updatedFilters[key];
+      }
+
+      return updatedFilters;
+    });
+  };
+
+  // Calculate total number of active filter values
+  const activeFilterCount = Object.values(selectedFilters).reduce((count, values) => count + values.length, 0);
 
   // Display loading state
   if (status === 'loading' || (status === 'authenticated' && loading)) {
@@ -216,8 +295,9 @@ export default function DiagnosticTestsPage() {
         <h1 className="relative z-10 text-4xl font-semibold tracking-tight text-gray-900 bg-white inline-block pr-6">Diagnostic Tests</h1>
       </div>
       
-      {/* Tabs - Enhanced for better visibility of active tab */}
+      {/* Tabs & Filters Row - Enhanced layout */}
       <div className="border-b border-gray-200 mb-10 flex justify-between items-end">
+        {/* Tabs Navigation */}
         <nav className="flex space-x-8" aria-label="Tabs">
           <button
             onClick={() => setActiveTab('available')}
@@ -228,7 +308,7 @@ export default function DiagnosticTestsPage() {
             }`}
             aria-current={activeTab === 'available' ? 'page' : undefined}
           >
-            Available Tests ({availablePapers.length})
+            Available Tests ({filteredAvailablePapers.length})
           </button>
           <button
             onClick={() => setActiveTab('completed')}
@@ -242,6 +322,81 @@ export default function DiagnosticTestsPage() {
             Completed Tests ({Object.keys(responsesByPaper).length})
           </button>
         </nav>
+
+        {/* Filter Button - Only show on Available Tests tab and if filters exist */}
+        {activeTab === 'available' && Object.keys(availableFilters).length > 0 && (
+          <Popover className="relative">
+            {({ open }) => (
+              <>
+                <Popover.Button
+                  className={`inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${open ? 'bg-gray-100' : ''}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-indigo-100 bg-indigo-600 rounded-full">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Popover.Button>
+                <Transition
+                  as={Fragment}
+                  enter="transition ease-out duration-200"
+                  enterFrom="opacity-0 translate-y-1"
+                  enterTo="opacity-100 translate-y-0"
+                  leave="transition ease-in duration-150"
+                  leaveFrom="opacity-100 translate-y-0"
+                  leaveTo="opacity-0 translate-y-1"
+                >
+                  <Popover.Panel className="absolute z-20 right-0 mt-2 w-72 transform px-4 sm:px-0">
+                    <div className="rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden bg-white">
+                      <div className="relative p-6 max-h-[60vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900">Filter Tests</h3>
+                          {activeFilterCount > 0 && (
+                            <button
+                              onClick={() => setSelectedFilters({}) } // Clear all filters
+                              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                            >
+                              Clear All
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="space-y-6">
+                          {Object.entries(availableFilters).map(([key, values]) => (
+                            <div key={key}>
+                              <h4 className="text-sm font-medium text-gray-500 mb-3 capitalize">{key.replace(/([A-Z])/g, ' $1')}</h4> {/* Nicer formatting for keys like timeLimit */}
+                              <div className="space-y-3">
+                                {values.map(value => (
+                                  <label key={value} className="flex items-center space-x-3 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                                      checked={selectedFilters[key]?.includes(value) ?? false}
+                                      onChange={() => handleFilterChange(key, value)}
+                                      aria-label={`Filter by ${key}: ${value}`}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">{value}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {Object.keys(availableFilters).length === 0 && (
+                          <p className="text-sm text-gray-500">No filterable metadata found.</p>
+                        )}
+                      </div>
+                    </div>
+                  </Popover.Panel>
+                </Transition>
+              </>
+            )}
+          </Popover>
+        )}
       </div>
       
       {/* Background pattern */}
@@ -255,17 +410,18 @@ export default function DiagnosticTestsPage() {
       {/* Available Tests */}
       {activeTab === 'available' && (
         <div className="transition-opacity duration-300 ease-in-out">
-          {availablePapers.length === 0 && questionPapers.length > 0 ? (
+          {filteredAvailablePapers.length === 0 && questionPapers.length > 0 ? (
             <div className="text-center bg-gray-50 p-8 rounded-lg shadow-sm">
-              <p className="text-gray-600 text-lg">You have completed all available tests!</p>
+              <p className="text-gray-600 text-lg">No tests match the selected filters.</p>
+              {activeFilterCount > 0 && ( <button onClick={() => setSelectedFilters({})} className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 underline">Clear All Filters</button> )}
             </div>
-          ) : availablePapers.length === 0 && questionPapers.length === 0 ? (
+          ) : filteredAvailablePapers.length === 0 && questionPapers.length === 0 ? (
              <div className="text-center bg-gray-50 p-8 rounded-lg shadow-sm">
               <p className="text-gray-600 text-lg">No diagnostic tests are available at this time.</p>
             </div>
           ) : (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {availablePapers.map((paper) => (
+              {filteredAvailablePapers.map((paper) => (
                 <div key={paper.ID} 
                   className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-xl shadow-indigo-100/10 
                   overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out flex flex-col relative"

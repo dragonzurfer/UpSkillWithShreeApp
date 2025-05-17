@@ -4,6 +4,7 @@ import { authOptions } from "../api/auth/[...nextauth]/auth";
 import ProtectedNavbar from "@/components/ProtectedNavbar";
 import NextAuthProvider from "@/components/NextAuthProvider";
 import { redirect } from "next/navigation";
+import "katex/dist/katex.min.css";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -35,7 +36,7 @@ function isTokenExpired(session: any): boolean {
     console.log("Token refresh error detected");
     return true;
   }
-  
+
   // If there's an accessToken but no expiry info in the session,
   // we assume the token is valid (as the JWT callback should have refreshed it)
   if (session?.accessToken && !session?.idToken) {
@@ -48,19 +49,19 @@ function isTokenExpired(session: any): boolean {
       // JWT tokens have 3 parts separated by dots
       const payload = session.idToken.split('.')[1];
       if (!payload) return true;
-      
+
       // Decode the base64 payload
       const decodedPayload = JSON.parse(Buffer.from(payload, 'base64').toString());
-      
+
       // Check expiration (exp is in seconds)
       const expiryTime = decodedPayload.exp * 1000; // Convert to milliseconds
-      
+
       // If token is expired, but we have an accessToken, the session might still be valid
       // due to token rotation - don't consider it expired in this case
       if (Date.now() >= expiryTime && !session.accessToken) {
         return true;
       }
-      
+
       return false;
     } catch (error) {
       // If any error in parsing, but we have a valid accessToken, consider the session valid
@@ -68,7 +69,7 @@ function isTokenExpired(session: any): boolean {
       return !session.accessToken; // Only consider expired if we don't have an accessToken
     }
   }
-  
+
   // If we have neither idToken nor accessToken, the session is invalid
   return true;
 } 

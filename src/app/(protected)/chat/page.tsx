@@ -1,5 +1,12 @@
 "use client";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
+
+
 import { useEffect, useRef, useState } from "react";
 import {
     Plus,
@@ -107,13 +114,19 @@ export default function HomePage() {
                 setPreviousResponseId(data.last_response_id);
             }
 
-            // append each delta to the last bot message
-            if (data.delta) {
-                setChat((c) => {
-                    const copy = [...c];
+            if (data.delta !== undefined) {
+                setChat((prev) => {
+                    const copy = [...prev];
                     const last = copy.pop()!;
-                    last.text += data.delta;
-                    return [...copy, last];
+                    const chunk = data.delta as string;
+
+                    // only append if it's not already at the end
+                    if (!last.text.endsWith(chunk)) {
+                        last.text = last.text + chunk;
+                    }
+
+                    copy.push(last);
+                    return copy;
                 });
             }
 
@@ -128,6 +141,12 @@ export default function HomePage() {
         wsAgentRef.current = ws;
     };
 
+    function normalizeMathDelimiters(s: string) {
+        // turn \[  …  \]  into  $$ … $$
+        return s.replace(/\\\[/g, "$$").replace(/\\\]/g, "$$");
+    }
+
+
     return (
         <div className="flex flex-col h-screen bg-[#0F1118] text-white">
             {/* Chat history */}
@@ -141,9 +160,17 @@ export default function HomePage() {
                             className={`max-w-[70%] px-4 py-2 rounded-lg ${m.sender === "user"
                                 ? "bg-blue-600 text-white"
                                 : "bg-gray-800 text-gray-100"
-                                }`}
+                                }
+                                whitespace-pre-line
+                                `}
                         >
-                            {m.text}
+
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+                                rehypePlugins={[rehypeKatex]}
+                            >
+                                {normalizeMathDelimiters(m.text)}
+                            </ReactMarkdown>
                         </div>
                     </div>
                 ))}

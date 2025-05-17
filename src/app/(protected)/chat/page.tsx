@@ -28,6 +28,9 @@ export default function HomePage() {
     const [chat, setChat] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState("");
 
+    // keep track of last response_id
+    const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
+
     // Initialize or re‐initialize audio WebSocket
     const initAudioSocket = () => {
         if (wsAudioRef.current) wsAudioRef.current.close();
@@ -85,11 +88,25 @@ export default function HomePage() {
         // 3) open agent WS
         if (wsAgentRef.current) wsAgentRef.current.close();
         const ws = new WebSocket("ws://localhost:8000/ws/agent");
+
         ws.onopen = () => {
-            ws.send(JSON.stringify({ input: text }));
+            // include previous_response_id if we have one
+            ws.send(
+                JSON.stringify({
+                    input: text,
+                    previous_response_id: previousResponseId,
+                })
+            );
         };
+
         ws.onmessage = (evt) => {
             const data = JSON.parse(evt.data);
+
+            // capture response_id on first event
+            if (data.last_response_id) {
+                setPreviousResponseId(data.last_response_id);
+            }
+
             // append each delta to the last bot message
             if (data.delta) {
                 setChat((c) => {
@@ -99,12 +116,15 @@ export default function HomePage() {
                     return [...copy, last];
                 });
             }
-            // you could also handle response_id / done flags here
+
+            // you could also handle data.done here if needed
         };
+
         ws.onerror = console.error;
         ws.onclose = () => {
             console.log("Agent WS closed");
         };
+
         wsAgentRef.current = ws;
     };
 

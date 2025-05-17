@@ -13,6 +13,7 @@
     "@headlessui/react": "^2.2.2",
     "@heroicons/react": "^2.2.0",
     "@types/recharts": "^2.0.1",
+    "lucide-react": "^0.511.0",
     "next": "15.3.0",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",

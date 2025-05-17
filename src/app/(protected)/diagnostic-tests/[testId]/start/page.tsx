@@ -101,7 +101,7 @@ export default function StartTestPage() {
   // Fetch the question paper
   useEffect(() => {
     if (!BACKEND_URL || status !== 'authenticated') return;
-    
+
     const fetchQuestionPaper = async () => {
       setLoading(true);
       setError(null);
@@ -137,7 +137,7 @@ export default function StartTestPage() {
         }
 
         const data = await response.json();
-        
+
         // Initialize the question paper
         setQuestionPaper(data);
       } catch (err) {
@@ -212,46 +212,24 @@ export default function StartTestPage() {
 
   // Validate responses before submitting
   const validateResponses = (): boolean => {
-    if (!questionPaper) return false;
-    
-    // Check if there are any unanswered multiple choice questions
-    const unansweredMultipleChoice = questionPaper.Questions.filter(q => 
-      q.Type === 'multiple_choice' && (!responses.has(q.ID) || !responses.get(q.ID))
-    );
-    
-    if (unansweredMultipleChoice.length > 0) {
-      setSubmitError(`Please answer all multiple choice questions. You have ${unansweredMultipleChoice.length} unanswered.`);
-      
-      // Navigate to the first unanswered multiple choice question
-      if (unansweredMultipleChoice.length > 0) {
-        const firstUnansweredIndex = questionPaper.Questions.findIndex(
-          q => q.ID === unansweredMultipleChoice[0].ID
-        );
-        if (firstUnansweredIndex !== -1) {
-          setCurrentQuestionIndex(firstUnansweredIndex);
-        }
-      }
-      
-      return false;
-    }
-    
+    // Allow skipping questions, so no validation is needed here
     return true;
   };
 
   // Submit the test
   const handleTestSubmit = async () => {
     if (!questionPaper || !BACKEND_URL) return;
-    
+
     // Record final exit time for the current question before submitting
     const finalTimestamp = Date.now();
     const lastQuestionId = questionPaper.Questions[currentQuestionIndex]?.ID;
-    
+
     // Always record final exit time on submission
     if (lastQuestionId !== undefined) {
       setQuestionEvents(prev => {
         const events = { ...prev };
         if (!events[lastQuestionId]) events[lastQuestionId] = { visits: [], exits: [], answers: [] };
-        
+
         // Always add a submission exit timestamp - this is different from navigation exits
         events[lastQuestionId].exits.push(finalTimestamp);
         return events;
@@ -265,7 +243,7 @@ export default function StartTestPage() {
         setQuestionEvents(prev => {
           const events = { ...prev };
           if (!events[qid]) events[qid] = { visits: [], exits: [], answers: [] };
-          
+
           // If a question has visits but no exits, add the final timestamp as exit
           if (events[qid].visits.length > 0 && events[qid].exits.length === 0) {
             events[qid].exits.push(finalTimestamp);
@@ -279,11 +257,11 @@ export default function StartTestPage() {
     if (!validateResponses()) {
       return;
     }
-    
+
     setSubmitting(true);
     setError(null);
     setSubmitError(null);
-    
+
     try {
       const headers = getAuthHeaders();
       if (!headers) {
@@ -316,7 +294,7 @@ export default function StartTestPage() {
         let errorBody = `Failed to submit test: ${response.statusText}`;
         try {
           const errorData = await response.json();
-          if(errorData.message) errorBody = errorData.message;
+          if (errorData.message) errorBody = errorData.message;
         } catch (jsonError) {
           // Ignore if response is not JSON
         }
@@ -325,15 +303,15 @@ export default function StartTestPage() {
 
       // Set test as completed
       setTestCompleted(true);
-      
+
       // Get the response ID
       const data = await response.json();
-      
+
       // Redirect to results page after successful submission
       setTimeout(() => {
         router.push(`/diagnostic-tests/${testId}/results/${data.ID}`);
       }, 1500);
-      
+
     } catch (err) {
       console.error("Submission Error:", err); // Log the actual error
       setError(err instanceof Error ? err.message : 'An error occurred while submitting the test');
@@ -348,26 +326,25 @@ export default function StartTestPage() {
     if (question.Type === 'multiple_choice') {
       try {
         // Parse answer choices from string if needed
-        const choices = typeof question.AnswerChoices === 'string' 
-          ? JSON.parse(question.AnswerChoices) 
-          : Array.isArray(question.AnswerChoices) 
-            ? question.AnswerChoices 
+        const choices = typeof question.AnswerChoices === 'string'
+          ? JSON.parse(question.AnswerChoices)
+          : Array.isArray(question.AnswerChoices)
+            ? question.AnswerChoices
             : [];
-        
+
         if (!Array.isArray(choices) || choices.length === 0) {
           throw new Error('Invalid answer choices');
         }
-        
+
         return (
           <div className="space-y-3 mt-4">
             {choices.map((choice, idx) => (
-              <label 
-                key={idx} 
-                className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  responses.get(question.ID) === choice 
-                    ? 'bg-indigo-50 border-indigo-300' 
-                    : 'hover:bg-gray-50'
-                }`}
+              <label
+                key={idx}
+                className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${responses.get(question.ID) === choice
+                  ? 'bg-indigo-50 border-indigo-300'
+                  : 'hover:bg-gray-50'
+                  }`}
               >
                 <input
                   type="radio"
@@ -380,7 +357,7 @@ export default function StartTestPage() {
                 <span className="text-gray-800">{choice}</span>
               </label>
             ))}
-            
+
             {!responses.has(question.ID) && (
               <p className="text-amber-600 text-sm mt-2">
                 Please select an answer for this question.
@@ -394,11 +371,11 @@ export default function StartTestPage() {
         return renderTextInput(question);
       }
     }
-    
+
     // Default to text input for non-multiple choice or fallback
     return renderTextInput(question);
   };
-  
+
   // Render text input for free-form answers
   const renderTextInput = (question: Question) => {
     return (
@@ -422,16 +399,16 @@ export default function StartTestPage() {
   const handleInitiatePayment = async () => {
     if (!paymentProductId || !BACKEND_URL || !cashfree) {
       setPaymentInitiationError(
-        !cashfree 
-        ? "Payment gateway is not initialized. Please wait or refresh." 
-        : "Missing payment details or configuration."
+        !cashfree
+          ? "Payment gateway is not initialized. Please wait or refresh."
+          : "Missing payment details or configuration."
       );
       return;
     }
-    
+
     setInitiatingPayment(true);
     setPaymentInitiationError(null);
-    
+
     try {
       // Get headers including Content-Type for the POST request
       const headers = getAuthHeaders(true); // Ensure Content-Type is included
@@ -440,7 +417,7 @@ export default function StartTestPage() {
         setInitiatingPayment(false);
         return;
       }
-      
+
       // Get the current URL
       const redirectUrl = window.location.href;
 
@@ -451,7 +428,7 @@ export default function StartTestPage() {
         headers,
         body: JSON.stringify({ redirectUrl: redirectUrl }) // Send current URL in body
       });
-      
+
       console.log("Received response status:", response.status);
 
       if (!response.ok) {
@@ -464,34 +441,34 @@ export default function StartTestPage() {
         } catch (parseError) {
           console.error("Could not parse error response as JSON:", parseError);
           // Use the raw text or a generic message if JSON parsing failed
-          throw new Error(errorBody.substring(0, 100) || `Failed to get payment session: ${response.statusText}`); 
+          throw new Error(errorBody.substring(0, 100) || `Failed to get payment session: ${response.statusText}`);
         }
       }
-      
+
       console.log("Attempting to parse response JSON...");
       const paymentSession: PaymentSessionResponse = await response.json();
-      
+
       // Log the actual response from the backend for debugging
       console.log("Successfully parsed payment session data:", paymentSession);
-      
+
       if (!paymentSession.paymentSessionId) {
         console.error("paymentSessionId key not found in response:", paymentSession);
         throw new Error("Payment session ID key not found in the response object.");
       }
-      
+
       // 2. Use the session ID to trigger Cashfree checkout
       console.log("Initializing Cashfree checkout with session ID:", paymentSession.paymentSessionId);
       const checkoutOptions = {
         paymentSessionId: paymentSession.paymentSessionId,
       };
-      
-      cashfree.checkout(checkoutOptions); 
+
+      cashfree.checkout(checkoutOptions);
       console.log("Cashfree checkout initiated."); // Log after calling checkout
       // Cashfree SDK handles the redirection internally
-      
+
       // Setting state back might happen after redirect, depending on timing
       // setInitiatingPayment(false); 
-      
+
     } catch (err) {
       console.error("Payment Initiation Error [Caught]:", err);
       setPaymentInitiationError(err instanceof Error ? err.message : 'An error occurred during payment initiation.');
@@ -593,12 +570,12 @@ export default function StartTestPage() {
             <div className="mt-4">
               <p><strong>Product:</strong> {paymentDetails.productName}</p>
               <p><strong>Cost:</strong> {paymentDetails.cost} {paymentDetails.currency}</p>
-              
+
               {paymentInitiationError && (
                 <p className="text-red-600 mt-2 font-medium">Payment Error: {paymentInitiationError}</p>
               )}
-              
-              <button 
+
+              <button
                 onClick={handleInitiatePayment}
                 disabled={initiatingPayment || !cashfree} // Disable if SDK not loaded
                 className={`mt-4 px-4 py-2 rounded-md text-white ${initiatingPayment || !cashfree ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
@@ -610,7 +587,7 @@ export default function StartTestPage() {
           )}
         </div>
         {!paymentRequired && (
-          <button 
+          <button
             onClick={() => router.back()}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
@@ -647,7 +624,7 @@ export default function StartTestPage() {
           <h2 className="font-semibold text-lg mb-2">No Questions Available</h2>
           <p>This test does not contain any questions.</p>
         </div>
-        <button 
+        <button
           onClick={() => router.back()}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
@@ -670,14 +647,14 @@ export default function StartTestPage() {
             Question {currentQuestionIndex + 1} of {questionPaper.Questions.length}
           </span>
           <div className="w-32 bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-indigo-600 h-2.5 rounded-full" 
+            <div
+              className="bg-indigo-600 h-2.5 rounded-full"
               style={{ width: `${calculateProgress()}%` }}
             ></div>
           </div>
         </div>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         {submitError && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
@@ -685,7 +662,7 @@ export default function StartTestPage() {
             <span className="block sm:inline">{submitError}</span>
           </div>
         )}
-        
+
         <div className="mb-4">
           <h2 className="text-lg font-semibold mb-3">Question {currentQuestionIndex + 1}</h2>
           <div className="flex items-center gap-2">
@@ -697,64 +674,55 @@ export default function StartTestPage() {
             )}
           </div>
         </div>
-        
+
         <div className="mb-6">
           <h3 className="text-md font-medium mb-2">Your Answer:</h3>
           {renderAnswerChoices(currentQuestion)}
         </div>
-        
+
         <div className="flex justify-between">
-          <button 
+          <button
             onClick={handlePrevQuestion}
             disabled={currentQuestionIndex === 0}
-            className={`px-4 py-2 rounded-md ${
-              currentQuestionIndex === 0 
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-md ${currentQuestionIndex === 0
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Previous
           </button>
-          
+
           {currentQuestionIndex < questionPaper.Questions.length - 1 ? (
-            <button 
+            <button
               onClick={handleNextQuestion}
-              className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 ${
-                currentQuestion.Type === 'multiple_choice' && !isCurrentQuestionAnswered() 
-                  ? 'opacity-90' 
-                  : ''
-              }`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
               Next
-              {currentQuestion.Type === 'multiple_choice' && !isCurrentQuestionAnswered() && (
-                <span className="ml-1 text-xs">⚠️</span>
-              )}
             </button>
           ) : (
-            <button 
+            <button
               onClick={handleTestSubmit}
               disabled={submitting}
-              className={`px-4 py-2 rounded-md ${
-                submitting 
-                  ? 'bg-green-400 cursor-not-allowed' 
-                  : 'bg-green-600 hover:bg-green-700'
-              } text-white`}
+              className={`px-4 py-2 rounded-md ${submitting
+                ? 'bg-green-400 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700'
+                } text-white`}
             >
               {submitting ? 'Submitting...' : 'Submit Test'}
             </button>
           )}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-2 mt-6">
         {questionPaper.Questions.map((q, index) => {
           let bgColor = 'bg-gray-200';
           if (responses.has(q.ID)) bgColor = 'bg-green-500';
           if (index === currentQuestionIndex) bgColor = 'bg-indigo-600';
-          
+
           // Add warning indicator for unanswered multiple choice questions
           const isMultipleChoiceUnanswered = q.Type === 'multiple_choice' && !responses.has(q.ID);
-          
+
           return (
             <button
               key={q.ID}
@@ -773,4 +741,4 @@ export default function StartTestPage() {
       </div>
     </div>
   );
-} 
+}

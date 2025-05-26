@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
 
 // Define interfaces (can be moved to a types file)
 interface Tag {
@@ -47,11 +52,11 @@ interface QuestionManagementProps {
     TableContainer: React.FC<{ children: React.ReactNode }>;
 }
 
-const QuestionManagement: React.FC<QuestionManagementProps> = ({ 
+const QuestionManagement: React.FC<QuestionManagementProps> = ({
     BACKEND_URL,
     getAuthHeaders,
     parseError,
-    tags: allTags, 
+    tags: allTags,
     materials: allMaterials,
     baseButtonClass,
     primaryButtonClass,
@@ -61,7 +66,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     ErrorMessage,
     LoadingIndicator,
     EmptyTableMessage,
-    TableContainer 
+    TableContainer
 }) => {
 
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -102,18 +107,18 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                 body: JSON.stringify({ // Send filters in the body
                     positiveTags: positiveTags.filter(tag => tag.trim() !== ''),
                     negativeTags: negativeTags.filter(tag => tag.trim() !== ''),
-                 }),
+                }),
             });
             if (!response.ok) throw new Error(await parseError(response));
             const data = await response.json();
             // Ensure AnswerChoices is always an array
             const formattedQuestions = (data || []).map((q: any) => ({
                 ...q,
-                AnswerChoices: Array.isArray(q.AnswerChoices) 
-                                ? q.AnswerChoices 
-                                : typeof q.AnswerChoices === 'string' 
-                                    ? q.AnswerChoices.split(',').map((s: string) => s.trim()).filter(Boolean) 
-                                    : [], // Default to empty array if not array or string
+                AnswerChoices: Array.isArray(q.AnswerChoices)
+                    ? q.AnswerChoices
+                    : typeof q.AnswerChoices === 'string'
+                        ? q.AnswerChoices.split(',').map((s: string) => s.trim()).filter(Boolean)
+                        : [], // Default to empty array if not array or string
                 // Ensure Tags and Materials are arrays too, just in case
                 Tags: Array.isArray(q.Tags) ? q.Tags : [],
                 Materials: Array.isArray(q.Materials) ? q.Materials : [],
@@ -144,15 +149,15 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     // --- Modal Handling --- 
 
     const openModal = (question: Question | null = null) => {
-        setCurrentQuestion(question 
-            ? { ...question } 
-            : { 
-                Description: '', 
-                CorrectAnswer: '', 
-                AnswerChoices: [], 
-                Hint: '', 
-                Explanation: '', 
-                Tags: [], 
+        setCurrentQuestion(question
+            ? { ...question }
+            : {
+                Description: '',
+                CorrectAnswer: '',
+                AnswerChoices: [],
+                Hint: '',
+                Explanation: '',
+                Tags: [],
                 Materials: [],
                 Type: 'multiple_choice' // Default to multiple choice for new questions
             });
@@ -178,7 +183,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     // Add a new answer choice
     const handleAddChoice = () => {
         if (!currentQuestion || !newChoice.trim()) return;
-        
+
         const choices = [...(currentQuestion.AnswerChoices || []), newChoice.trim()];
         setCurrentQuestion({ ...currentQuestion, AnswerChoices: choices });
         setNewChoice('');
@@ -187,16 +192,16 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     // Remove an answer choice
     const handleRemoveChoice = (index: number) => {
         if (!currentQuestion) return;
-        
+
         const choices = [...(currentQuestion.AnswerChoices || [])];
         choices.splice(index, 1);
-        
+
         // If we're removing the correct answer, reset it
         if (currentQuestion.CorrectAnswer === currentQuestion.AnswerChoices?.[index]) {
-            setCurrentQuestion({ 
-                ...currentQuestion, 
+            setCurrentQuestion({
+                ...currentQuestion,
                 AnswerChoices: choices,
-                CorrectAnswer: '' 
+                CorrectAnswer: ''
             });
         } else {
             setCurrentQuestion({ ...currentQuestion, AnswerChoices: choices });
@@ -232,12 +237,12 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                 setModalError("Multiple choice questions must have at least 2 answer choices.");
                 return;
             }
-            
+
             if (!currentQuestion.CorrectAnswer) {
                 setModalError("Please select a correct answer for this multiple choice question.");
                 return;
             }
-            
+
             if (!currentQuestion.AnswerChoices?.includes(currentQuestion.CorrectAnswer)) {
                 setModalError("The correct answer must be one of the answer choices.");
                 return;
@@ -248,7 +253,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
         setModalError(null);
 
         const isUpdating = currentQuestion.ID !== undefined;
-        const url = isUpdating 
+        const url = isUpdating
             ? `${BACKEND_URL}/v1/api/questions/${currentQuestion.ID}`
             : `${BACKEND_URL}/v1/api/questions`;
         const method = isUpdating ? 'PUT' : 'POST';
@@ -272,14 +277,14 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
             });
 
             if (!response.ok) throw new Error(await parseError(response));
-            
+
             const savedQuestion = await response.json();
             const questionId = savedQuestion.ID;
 
             // --- Handle Tag Associations --- 
             const currentTagIds = currentQuestion.Tags?.map(t => t.ID) || [];
             const originalTagIds = isUpdating ? (questions.find(q => q.ID === currentQuestion.ID)?.Tags || []).map(t => t.ID) : [];
-            
+
             const tagsToAdd = currentTagIds.filter(id => !originalTagIds.includes(id));
             const tagsToRemove = originalTagIds.filter(id => !currentTagIds.includes(id));
 
@@ -293,7 +298,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
             // --- Handle Material Associations --- 
             const currentMaterialIds = currentQuestion.Materials?.map(m => m.ID) || [];
             const originalMaterialIds = isUpdating ? (questions.find(q => q.ID === currentQuestion.ID)?.Materials || []).map(m => m.ID) : [];
-            
+
             const materialsToAdd = currentMaterialIds.filter(id => !originalMaterialIds.includes(id));
             const materialsToRemove = originalMaterialIds.filter(id => !currentMaterialIds.includes(id));
 
@@ -409,15 +414,15 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
     // Filter tags based on search query
     const filteredTags = useMemo(() => {
         if (!tagSearchQuery.trim()) return allTags;
-        return allTags.filter(tag => 
+        return allTags.filter(tag =>
             tag.Name.toLowerCase().includes(tagSearchQuery.toLowerCase())
         );
     }, [allTags, tagSearchQuery]);
 
     // --- Memoized Lists for Performance --- 
-    const sortedQuestions = useMemo(() => 
-        [...questions].sort((a, b) => new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime()), 
-    [questions]);
+    const sortedQuestions = useMemo(() =>
+        [...questions].sort((a, b) => new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime()),
+        [questions]);
 
     // --- Render Logic --- 
     return (
@@ -433,39 +438,39 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
 
             {/* Filter Section */}
             <div className="p-4 border rounded bg-gray-50 space-y-3">
-                 <h3 className="text-md font-medium">Filter Questions by Tags</h3>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                   <div>
-                     <label className="block text-sm font-medium mb-1">Include tags (comma-sep.)</label>
-                     <input
-                       type="text"
-                       value={positiveTagFilter}
-                       onChange={(e) => setPositiveTagFilter(e.target.value)}
-                       className={`${inputClass}`}
-                       placeholder="e.g., Arrays, Strings"
-                       disabled={loading}
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium mb-1">Exclude tags (comma-sep.)</label>
-                     <input
-                       type="text"
-                       value={negativeTagFilter}
-                       onChange={(e) => setNegativeTagFilter(e.target.value)}
-                       className={`${inputClass}`}
-                       placeholder="e.g., difficulty:hard"
-                       disabled={loading}
-                     />
-                   </div>
-                 </div>
-                 <button
-                   onClick={handleApplyFilters}
-                   className={`${secondaryButtonClass}`}
-                   disabled={loading}
-                 >
-                   {loading ? 'Filtering...' : 'Apply Filters'}
-                 </button>
-             </div>
+                <h3 className="text-md font-medium">Filter Questions by Tags</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Include tags (comma-sep.)</label>
+                        <input
+                            type="text"
+                            value={positiveTagFilter}
+                            onChange={(e) => setPositiveTagFilter(e.target.value)}
+                            className={`${inputClass}`}
+                            placeholder="e.g., Arrays, Strings"
+                            disabled={loading}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Exclude tags (comma-sep.)</label>
+                        <input
+                            type="text"
+                            value={negativeTagFilter}
+                            onChange={(e) => setNegativeTagFilter(e.target.value)}
+                            className={`${inputClass}`}
+                            placeholder="e.g., difficulty:hard"
+                            disabled={loading}
+                        />
+                    </div>
+                </div>
+                <button
+                    onClick={handleApplyFilters}
+                    className={`${secondaryButtonClass}`}
+                    disabled={loading}
+                >
+                    {loading ? 'Filtering...' : 'Apply Filters'}
+                </button>
+            </div>
 
             <TableContainer>
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -484,7 +489,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                     ) : sortedQuestions.length === 0 ? (
                         <EmptyTableMessage colSpan={6}>
                             {positiveTagFilter || negativeTagFilter ? 'No questions match the current filters.' : 'No questions found.'}
-                         </EmptyTableMessage>
+                        </EmptyTableMessage>
                     ) : (
                         sortedQuestions.map((q) => (
                             <tr key={q.ID}>
@@ -530,11 +535,11 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
             {isModalOpen && currentQuestion && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-75 transition-opacity" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        {/* Background overlay */} 
+                        {/* Background overlay */}
                         <div className="fixed inset-0 transition-opacity" aria-hidden="true">
                             <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
                         </div>
-                        {/* Modal panel */} 
+                        {/* Modal panel */}
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
@@ -546,7 +551,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                                             </h3>
                                             <div className="mt-4 space-y-4">
                                                 {modalError && <ErrorMessage>{modalError}</ErrorMessage>}
-                                                
+
                                                 <div>
                                                     <label htmlFor="Type" className="block text-sm font-medium text-gray-700">Question Type</label>
                                                     <select
@@ -561,7 +566,7 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                                                         <option value="text">Text Input</option>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div>
                                                     <label htmlFor="Description" className="block text-sm font-medium text-gray-700">Description</label>
                                                     <textarea
@@ -574,6 +579,15 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                                                         required
                                                         disabled={isSaving}
                                                     />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Preview</label>
+                                                    <div className="p-2 border rounded bg-gray-50 max-h-40 overflow-y-auto prose">
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+                                                            rehypePlugins={[rehypeKatex]}
+                                                        >{currentQuestion.Description || ''}</ReactMarkdown>
+                                                    </div>
                                                 </div>
 
                                                 {currentQuestion.Type === 'multiple_choice' ? (
@@ -682,8 +696,8 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
                                                     <div className="mb-2">
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             className={inputClass}
                                                             placeholder="Search tags..."
                                                             value={tagSearchQuery}
@@ -735,16 +749,16 @@ const QuestionManagement: React.FC<QuestionManagementProps> = ({
                                     </div>
                                 </div>
                                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button 
+                                    <button
                                         type="submit"
                                         className={`${primaryButtonClass} w-full sm:ml-3 sm:w-auto`}
                                         disabled={isSaving}
                                     >
                                         {isSaving ? 'Saving...' : 'Save Question'}
                                     </button>
-                                    <button 
-                                        type="button" 
-                                        onClick={closeModal} 
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
                                         className={`${secondaryButtonClass} mt-3 w-full sm:mt-0 sm:w-auto`}
                                         disabled={isSaving}
                                     >

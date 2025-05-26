@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
-
+import { CopyButton } from "@/components/CopyButton";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -38,6 +38,8 @@ export default function HomePage() {
     // keep track of last response_id
     const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
 
+    const endOfChatRef = useRef<HTMLDivElement | null>(null);
+
     // Initialize or re‐initialize audio WebSocket
     const initAudioSocket = () => {
         if (wsAudioRef.current) wsAudioRef.current.close();
@@ -59,6 +61,12 @@ export default function HomePage() {
             wsAgentRef.current?.close();
         };
     }, []);
+
+    useEffect(() => {
+        // smooth scroll each time a chunk arrives
+        endOfChatRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chat]);
+
 
     // Audio record toggle
     const handleAudioToggle = async () => {
@@ -146,90 +154,138 @@ export default function HomePage() {
         return s.replace(/\\\[/g, "$$").replace(/\\\]/g, "$$");
     }
 
+    const stopWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+        e.stopPropagation();   // don’t let it reach the chat scroller
+    };
+
+    const chatStarted = chat.length > 0;
 
     return (
-        <div className="flex flex-col h-screen bg-[#0F1118] text-white">
-            {/* Chat history */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-                {chat.map((m, i) => (
-                    <div
-                        key={i}
-                        className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                        <div
-                            className={`max-w-[70%] px-4 py-2 rounded-lg ${m.sender === "user"
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-800 text-gray-100"
-                                }
-                                whitespace-pre-line
-                                `}
-                        >
+        <div className={`flex flex-col h-screen bg-surface text-ink overflow-hidden
+                     ${chatStarted ? "" : "justify-center"}`}>
 
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
-                                rehypePlugins={[rehypeKatex]}
+            {!chatStarted && (
+                <h1 className="text-3xl md:text-4xl font-semibold mb-10 text-center">
+                    What&rsquo;s on the agenda today?
+                </h1>
+            )}
+
+            {/* ─── chat history ─────────────────────────────────────── */}
+            {chatStarted && (
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                    {chat.map((m, i) => (
+                        <div key={i}
+                            className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
+                            <div
+                                className={`relative max-w-[70%] rounded-2xl px-4 py-2 whitespace-pre-wrap
+                      ${m.sender === "user"
+                                        ? "bg-brand text-surface"
+                                        : "bg-subtle text-ink"}`}
                             >
-                                {normalizeMathDelimiters(m.text)}
-                            </ReactMarkdown>
-                        </div>
-                    </div>
-                ))}
-            </div>
 
-            {/* Input area */}
-            <div className="bg-[#20232A] px-5 py-3 shadow-md">
-                <div className="flex flex-col max-w-3xl mx-auto">
+                                <CopyButton
+                                    text={m.text}
+                                    className="sticky top-4 right-0 ml-auto opacity-0
+                   group-hover:opacity-100"
+                                />
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+                                    rehypePlugins={[rehypeKatex]}
+                                >
+                                    {normalizeMathDelimiters(m.text)}
+                                </ReactMarkdown>
+                                {m.text.length > 0 && <CopyButton text={m.text} />}
+                            </div>
+                        </div>
+                    ))}
+                    <div ref={endOfChatRef} />
+                </div>
+            )}
+
+            {/* ─── input card ───────────────────────────────────────── */}
+            <div className="w-full max-w-[700px] mx-auto px-4">
+                <div className="rounded-2xl border border-border bg-surface px-4 py-3 shadow-sm"
+                    onWheel={stopWheel}
+                >
                     {/* top row */}
-                    <div className="flex items-center">
-                        <button className="p-2 rounded-full hover:bg-[#2C2F36] transition">
-                            <Plus size={24} />
-                        </button>
+                    <div className="flex items-center gap-3">
+                        <IconCircle><Plus size={20} /></IconCircle>
+
                         <input
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             placeholder="Ask anything"
-                            className="flex-grow bg-transparent placeholder-[#D7DBE0] focus:outline-none text-lg mx-4"
+                            className="flex-1 bg-transparent outline-none placeholder-inkMuted text-base"
                         />
-                        <button
-                            onClick={handleAudioToggle}
-                            className="p-2 rounded-full hover:bg-[#2C2F36] transition"
-                        >
+
+                        <IconCircle onClick={handleAudioToggle}>
                             {recording ? (
-                                <Mic2 size={24} className="text-red-400 animate-pulse" />
+                                <Mic2 size={20} className="text-red-500 animate-pulse" />
                             ) : loadingAudio ? (
-                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <Spinner />
                             ) : (
-                                <Mic2 size={24} />
+                                <Mic2 size={20} />
                             )}
-                        </button>
-                        <button
-                            onClick={handleSend}
-                            className="p-2 ml-2 rounded-full bg-gray-700 hover:bg-gray-600 transition"
-                        >
-                            <ArrowUp size={24} />
-                        </button>
+                        </IconCircle>
+
+                        <IconCircle onClick={handleSend} className="bg-brand hover:bg-brand-dark">
+                            <ArrowUp size={20} className="text-surface" />
+                        </IconCircle>
                     </div>
 
-                    {/* bottom row */}
-                    <div className="flex items-center justify-center space-x-4 mt-3">
-                        <button className="flex items-center space-x-2 px-3 py-1 rounded-full hover:bg-[#2C2F36] transition">
-                            <Globe size={18} />
-                            <span className="text-sm">Search</span>
-                        </button>
-                        <button className="flex items-center space-x-2 px-3 py-1 rounded-full hover:bg-[#2C2F36] transition">
-                            <Rocket size={18} />
-                            <span className="text-sm">Deep research</span>
-                        </button>
-                        <button className="flex items-center space-x-2 px-3 py-1 rounded-full hover:bg-[#2C2F36] transition">
-                            <ImageIcon size={18} />
-                            <span className="text-sm">Create image</span>
-                        </button>
-                        <button className="p-2 rounded-full hover:bg-[#2C2F36] transition">
-                            <MoreHorizontal size={20} />
-                        </button>
+                    {/* chips */}
+                    <div className="flex items-center flex-wrap gap-3 mt-3">
+                        <IconPill icon={<Globe size={16} />} label="Search" />
+                        <IconPill icon={<Rocket size={16} />} label="Deep research" />
+                        <IconPill icon={<ImageIcon size={16} />} label="Create image" />
+                        <IconCircle><MoreHorizontal size={18} /></IconCircle>
                     </div>
                 </div>
             </div>
         </div>
+    );
+}
+
+/* ─── small helpers ───────────────────────────────────────── */
+
+function IconCircle({
+    children,
+    onClick,
+    className = "",
+}: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    className?: string;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={`w-10 h-10 flex items-center justify-center rounded-full
+                  hover:bg-brand-light transition ${className}`}
+        >
+            {children}
+        </button>
+    );
+}
+
+function IconPill({
+    icon,
+    label,
+}: {
+    icon: React.ReactNode;
+    label: string;
+}) {
+    return (
+        <button className="flex items-center gap-1 px-3 h-9 rounded-full
+                       border border-border hover:bg-brand-light text-sm">
+            {icon}
+            {label}
+        </button>
+    );
+}
+
+function Spinner() {
+    return (
+        <div className="w-5 h-5 border-2 border-ink border-t-transparent rounded-full animate-spin" />
     );
 }

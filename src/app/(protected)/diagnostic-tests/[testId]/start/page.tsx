@@ -5,6 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { load, Cashfree } from "@cashfreepayments/cashfree-js"; // Import load and Cashfree type
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
+
 // Define the interfaces based on the backend models
 interface Question {
   ID: number;
@@ -354,7 +360,17 @@ export default function StartTestPage() {
                   onChange={() => handleAnswerChange(question.ID, choice)}
                   className="mt-1 mr-3 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
-                <span className="text-gray-800">{choice}</span>
+                <ReactMarkdown
+                  // pick whichever remark/rehype plugins you need
+                  remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+                  rehypePlugins={[rehypeKatex]}
+                  // force it inline by rendering <p> children as a span
+                  components={{
+                    p: ({ children }) => <span className="text-gray-800">{children}</span>
+                  }}
+                >
+                  {choice}
+                </ReactMarkdown>
               </label>
             ))}
 
@@ -664,14 +680,25 @@ export default function StartTestPage() {
         )}
 
         <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-3">Question {currentQuestionIndex + 1}</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-semibold">Question {currentQuestionIndex + 1}</h2>
+            <div>
+              {currentQuestion.Type === 'multiple_choice' && (
+                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                  Multiple Choice
+                </span>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
-            <p className="text-gray-800">{currentQuestion.Description}</p>
-            {currentQuestion.Type === 'multiple_choice' && (
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                Multiple Choice
-              </span>
-            )}
+            <p className="text-gray-800 prose">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {currentQuestion.Description}
+              </ReactMarkdown>
+            </p>
           </div>
         </div>
 

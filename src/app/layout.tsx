@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google"; 
 import "./globals.css";
 import NextAuthProvider from "@/components/NextAuthProvider";
+import '@fontsource/inter';
 
 // Remove font constants if imports are removed
 // const geistSans = Geist({ ... });
@@ -30,7 +31,7 @@ export default function RootLayout({
         <link rel="icon" href="/graduation-hat.svg" type="image/svg+xml" />
       </head>
       {/* Remove font variables from className */}
-      <body className="antialiased"> 
+      <body className="antialiased">
         <NextAuthProvider>
           {children}
         </NextAuthProvider>
